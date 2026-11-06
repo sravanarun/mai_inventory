@@ -110,29 +110,18 @@
     .card-top { display: flex; gap: 20px; align-items: flex-start; }
 
     .image-viewer { 
-      width: 500px; height: 500px; min-width: 500px; background: #f8fafc; /* Slightly darkened to hide JPEG artifacts */
+      width: 500px; height: 500px; min-width: 500px; background: #ffffff; 
       border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; 
       border: 1px solid var(--border); position: relative; cursor: zoom-in;
     }
-    
-    /* ENHANCED IMAGE CSS TRICKS */
-    .image-viewer img, .lightbox-body img { 
-      width: 100%; height: 100%; object-fit: contain; 
-      
-      /* Force sharper upscaling algorithms */
-      image-rendering: -webkit-optimize-contrast;
-      image-rendering: crisp-edges;
-      
-      /* Boost contrast, increase brightness to make gold pop, slightly bump saturation */
-      filter: contrast(1.15) brightness(1.05) saturate(1.1);
-    }
+    .image-viewer img { width: 100%; height: 100%; object-fit: contain; }
     
     .zoom-hint {
       position: absolute; bottom: 10px; right: 10px; background: rgba(9, 14, 26, 0.75); color: #fff;
       padding: 4px 8px; border-radius: 4px; font-size: 0.68rem; pointer-events: none; backdrop-filter: blur(4px);
       border: 1px solid var(--border); opacity: 0.85;
     }
-    .img-loader { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #0284c7; font-size: 0.85rem; font-weight: 700; background: transparent; width: 100%; height: 100%; z-index: 5; }
+    .img-loader { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #0284c7; font-size: 0.85rem; font-weight: 700; background: #ffffff; width: 100%; height: 100%; z-index: 5; }
     .spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #0284c7; border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .img-fallback { color: #64748b; font-size: 0.85rem; text-align: center; display: none; padding: 20px; z-index: 6; }
@@ -184,7 +173,8 @@
     .lightbox-tag-wt { font-size: 0.82rem; font-weight: 700; color: #38bdf8; background: #0c213d; border-color: #0284c7; }
     .lightbox-close-btn { background: #1e293b; color: #fff; border: 1px solid var(--border); width: 38px; height: 38px; border-radius: 50%; font-size: 1.2rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     .lightbox-close-btn:hover { background: #dc2626; border-color: #dc2626; }
-    .lightbox-body { width: 100%; max-width: 900px; height: calc(100vh - 160px); max-height: 800px; background: #f8fafc; border-radius: 14px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; border: 2px solid var(--border); }
+    .lightbox-body { width: 100%; max-width: 900px; height: calc(100vh - 160px); max-height: 800px; background: #ffffff; border-radius: 14px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; border: 2px solid var(--border); }
+    .lightbox-body img { width: 100%; height: 100%; object-fit: contain; }
     .lightbox-actions-bar { margin-top: 12px; width: 100%; max-width: 900px; display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.95); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; backdrop-filter: blur(8px); }
 
     /* Download/Export Choice Modal */
@@ -233,6 +223,7 @@
 </head>
 <body>
 
+  <!-- Manual Upload Modal (Replaces Auth) -->
   <div id="authOverlay">
     <div class="auth-card">
       <h3>In-Store Stock Catalog</h3>
@@ -251,11 +242,13 @@
 
   <div class="control-panel">
     <div class="filter-grid">
+      <!-- Universal Live Search -->
       <div class="filter-box">
         <span class="filter-label">Search (SKU, Exact WT, Tag)</span>
         <input type="text" class="search-input" id="skuSearchInput" placeholder="e.g. 4.250, Ring, Bestdeal..." oninput="handleUniversalSearch()">
       </div>
 
+      <!-- Special Tag Filter -->
       <div class="filter-box" id="fb-tag">
         <span class="filter-label">Special Tag</span>
         <button class="dropdown-btn" onclick="toggleDropdown('tag')">All Tags</button>
@@ -274,6 +267,7 @@
         </div>
       </div>
 
+      <!-- Design Filter -->
       <div class="filter-box" id="fb-design">
         <span class="filter-label">Design</span>
         <button class="dropdown-btn" onclick="toggleDropdown('design')">All Designs</button>
@@ -436,9 +430,10 @@
   <div class="main-card">
     <div class="card-top">
       
+      <!-- Image & Dynamic Unique Tag Overlay -->
       <div class="image-viewer" onclick="openLightbox()" title="Click to enlarge image">
-        <div id="dispTag" style="display:none;"></div>
-        <div class="img-loader" id="imgLoader"><div class="spinner"></div></div>
+        <div id="dispTag" style="display:none;"></div> <!-- Special Tag Badge -->
+        <div class="img-loader" id="imgLoader"><div class="spinner"></div><span>Loading image...</span></div>
         <img id="itemImg" src="" alt="Variant Preview" onload="handleImageSuccess()" onerror="handleImageError()">
         <div id="imgFallback" class="img-fallback">Image not found on catalog server</div>
         <div class="zoom-hint">🔍 Tap to Zoom</div>
@@ -496,8 +491,8 @@
     </div>
 
     <div class="lightbox-body" id="lightboxBody">
-      <div id="modalTag" style="display:none;"></div>
-      <div class="img-loader" id="modalImgLoader"><div class="spinner"></div></div>
+      <div id="modalTag" style="display:none;"></div> <!-- Special Tag Badge -->
+      <div class="img-loader" id="modalImgLoader"><div class="spinner"></div><span>Loading full-size preview...</span></div>
       <img id="modalImg" src="" alt="Enlarged Variant Preview" onload="handleModalImgSuccess()" onerror="handleModalImgError()">
       <div id="modalFallback" class="img-fallback"></div>
     </div>
@@ -550,6 +545,7 @@
   </div>
 
   <script>
+    // Strict Domain Security Guardrail
     (function() {
       const allowedDomain = "sravanarun.github.io";
       const isLocalHost = window.location.hostname === "localhost" || 
@@ -1022,6 +1018,7 @@
       const uniqueVariants = Array.from(selectedVariantsMap.values());
       const totalItems = uniqueVariants.length;
       
+      // PHASE 1: BATCH FETCH
       const BATCH_SIZE = 15;
       const preloadedImages = [];
 
@@ -1042,6 +1039,7 @@
         preloadedImages.push(...batchResults);
       }
 
+      // PHASE 2: BUILD PDF
       actionBtn.innerText = "⏳ Assembling PDF Document...";
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -1118,7 +1116,7 @@
           clearTimeout(timeoutId);
           try {
             const canvas = document.createElement('canvas');
-            const MAX_DIM = 500;
+            const MAX_DIM = 500; // Optimal 500px resolution
             let w = img.naturalWidth || 500; let h = img.naturalHeight || 500;
             if (w > MAX_DIM || h > MAX_DIM) {
               const ratio = Math.min(MAX_DIM / w, MAX_DIM / h); w *= ratio; h *= ratio;
@@ -1126,7 +1124,7 @@
             canvas.width = w; canvas.height = h;
             const ctx = canvas.getContext('2d');
             ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
-            resolve(canvas.toDataURL('image/jpeg', 0.80));
+            resolve(canvas.toDataURL('image/jpeg', 0.80)); // 80% Quality
           } catch (e) { reject(e); }
         };
         img.onerror = () => { clearTimeout(timeoutId); reject(new Error('Image fetch failed')); };
