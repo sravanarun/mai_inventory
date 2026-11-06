@@ -5,54 +5,57 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>In-Store Stock Catalogue</title>
   
-  <!-- Excel & PDF Engines -->
+  <!-- Decompression & Decryption Engines -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  <!-- Export Engines -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <style>
+    /* ---------------------------------------------------
+       GREEN THEME (Emerald & Forest Palette)
+       --------------------------------------------------- */
     :root {
-      --bg: #090e1a;
-      --card-bg: #131c2e;
-      --panel-bg: #0f172a;
-      --border: #22324e;
-      --primary: #38bdf8;
-      --primary-hover: #0284c7;
-      --accent: #10b981;
-      --text: #f1f5f9;
-      --text-muted: #94a3b8;
+      --bg: #022c22;             /* Very Dark Green */
+      --card-bg: #064e3b;        /* Dark Emerald */
+      --panel-bg: #065f46;       /* Mid Emerald */
+      --border: #047857;         /* Bright Emerald Border */
+      --primary: #34d399;        /* Light Green Highlight */
+      --primary-hover: #10b981;  
+      --accent: #fbbf24;         /* Gold/Amber for Badges */
+      --text: #ecfdf5;           /* Off-White Greenish Text */
+      --text-muted: #a7f3d0;     /* Muted Green Text */
     }
+
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
     body { background: var(--bg); color: var(--text); margin: 0; padding: 12px 14px 80px 14px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
 
-    /* Upload Auth Modal */
+    /* Security Passcode Modal */
     #authOverlay {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(9, 14, 26, 0.98); z-index: 99999; display: flex;
+      background: rgba(2, 44, 34, 0.98); z-index: 99999; display: flex;
       align-items: center; justify-content: center; flex-direction: column;
     }
     .auth-card {
-      background: #131c2e; border: 1px solid var(--border); padding: 26px;
-      border-radius: 12px; max-width: 380px; width: 90%; text-align: center;
+      background: var(--card-bg); border: 1px solid var(--border); padding: 26px;
+      border-radius: 12px; max-width: 360px; width: 90%; text-align: center;
       box-shadow: 0 20px 40px rgba(0,0,0,0.8);
     }
     .auth-card h3 { color: var(--primary); margin: 0 0 8px 0; }
-    .auth-card p { color: var(--text-muted); font-size: 0.85rem; margin: 0 0 18px 0; }
-    .auth-input[type="file"] {
-      width: 100%; padding: 10px; background: #090e1a; border: 1px dashed #334155;
-      color: #fff; border-radius: 6px; font-size: 0.85rem; outline: none; margin-bottom: 16px; cursor: pointer;
+    .auth-card p { color: var(--text-muted); font-size: 0.82rem; margin: 0 0 18px 0; }
+    .auth-input {
+      width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border);
+      color: #fff; border-radius: 6px; font-size: 1.1rem; text-align: center;
+      letter-spacing: 2px; outline: none; margin-bottom: 12px;
     }
-    .auth-input[type="file"]::file-selector-button {
-      background: #1e293b; color: #fff; border: 1px solid #334155;
-      padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-right: 10px; font-weight: 600;
-    }
-    .auth-input[type="file"]::file-selector-button:hover { background: #334155; }
+    .auth-input:focus { border-color: var(--primary); }
     .auth-btn {
-      width: 100%; padding: 12px; background: #0284c7; border: none;
+      width: 100%; padding: 12px; background: var(--primary-hover); border: none;
       color: #fff; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 0.95rem;
     }
-    .auth-btn:hover { background: #0369a1; }
-    .auth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .auth-err { color: #ef4444; font-size: 0.82rem; margin-top: 10px; display: none; }
+    .auth-btn:hover { background: #059669; }
+    .auth-err { color: #f87171; font-size: 0.82rem; margin-top: 10px; display: none; }
     .auth-loading { color: var(--primary); font-size: 0.82rem; margin-top: 10px; display: none; }
 
     /* Header & Panel */
@@ -65,50 +68,51 @@
     .filter-label { font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
 
     /* Search & Wide Boxes */
-    .search-input { background: #090e1a; border: 1px solid var(--border); color: #fff; padding: 7px 10px; border-radius: 6px; font-size: 0.78rem; outline: none; width: 100%; }
+    .search-input { background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 7px 10px; border-radius: 6px; font-size: 0.78rem; outline: none; width: 100%; }
     .search-input:focus { border-color: var(--primary); }
     .filter-box-wide { grid-column: span 2; min-width: 250px; }
 
-    .dropdown-btn { background: #090e1a; color: var(--text); border: 1px solid var(--border); padding: 7px 10px; border-radius: 6px; font-size: 0.78rem; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dropdown-btn { background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 7px 10px; border-radius: 6px; font-size: 0.78rem; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .dropdown-btn:hover { border-color: var(--primary); }
     .dropdown-btn::after { content: "▾"; font-size: 0.75rem; margin-left: 6px; color: var(--text-muted); flex-shrink: 0; }
     
-    .dropdown-menu { display: none; position: absolute; top: calc(100% + 4px); left: 0; min-width: 220px; max-height: 310px; background: #0b1324; border: 1px solid var(--border); border-radius: 8px; z-index: 1000; flex-direction: column; padding: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.8); }
+    .dropdown-menu { display: none; position: absolute; top: calc(100% + 4px); left: 0; min-width: 220px; max-height: 310px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; z-index: 1000; flex-direction: column; padding: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.8); }
     .dropdown-menu.show { display: flex; }
     .dropdown-menu-wide { min-width: 440px; max-width: 520px; max-height: 380px; }
 
     /* Dropdown Toolbar */
     .dropdown-toolbar { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
     .select-all-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem; color: var(--primary); cursor: pointer; padding: 2px 4px; }
-    .select-all-row:hover { background: #1e293b; border-radius: 4px; }
+    .select-all-row:hover { background: var(--panel-bg); border-radius: 4px; }
     .select-all-label { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; font-weight: 600; }
 
-    .dropdown-search { background: #090e1a; border: 1px solid var(--border); color: #fff; padding: 6px 8px; border-radius: 4px; font-size: 0.76rem; outline: none; }
+    .dropdown-search { background: var(--card-bg); border: 1px solid var(--border); color: #fff; padding: 6px 8px; border-radius: 4px; font-size: 0.76rem; outline: none; }
     .dropdown-search:focus { border-color: var(--primary); }
     .dropdown-list { overflow-y: auto; display: flex; flex-direction: column; gap: 3px; max-height: 180px; }
     .dropdown-menu-wide .dropdown-list { max-height: 260px; }
 
     .dropdown-item { display: flex; align-items: flex-start; gap: 6px; font-size: 0.76rem; cursor: pointer; padding: 5px 6px; border-radius: 4px; word-break: break-all; }
-    .dropdown-item:hover { background: #1e293b; }
+    .dropdown-item:hover { background: var(--panel-bg); }
     .dropdown-item input { margin-top: 2px; flex-shrink: 0; }
 
     .weight-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-    .weight-row select, .weight-row input { background: #090e1a; border: 1px solid var(--border); color: var(--text); padding: 6px 8px; border-radius: 6px; font-size: 0.78rem; outline: none; }
+    .weight-row select, .weight-row input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px 8px; border-radius: 6px; font-size: 0.78rem; outline: none; }
     .weight-row select { width: 120px; }
     .weight-row input { width: 75px; }
 
     /* Stats Bar and Bulk Selectors */
-    .stats-bar { width: 100%; max-width: 1250px; display: flex; justify-content: space-between; align-items: center; background: #0f172a; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 10px; font-size: 0.78rem; color: var(--text-muted); flex-wrap: wrap; gap: 8px; }
+    .stats-bar { width: 100%; max-width: 1250px; display: flex; justify-content: space-between; align-items: center; background: var(--panel-bg); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 10px; font-size: 0.78rem; color: var(--text-muted); flex-wrap: wrap; gap: 8px; }
     .stats-bar b { color: var(--primary); }
     .bulk-btn-group { display: flex; gap: 6px; align-items: center; }
-    .btn-bulk { background: #1e293b; border: 1px solid var(--border); color: #cbd5e1; padding: 4px 8px; border-radius: 4px; font-size: 0.72rem; cursor: pointer; font-weight: 600; }
+    .btn-bulk { background: var(--card-bg); border: 1px solid var(--border); color: var(--text); padding: 4px 8px; border-radius: 4px; font-size: 0.72rem; cursor: pointer; font-weight: 600; }
     .btn-bulk:hover { border-color: var(--primary); color: #fff; }
-    .btn-bulk-danger:hover { border-color: #ef4444; color: #ef4444; }
+    .btn-bulk-danger:hover { border-color: #f87171; color: #f87171; }
 
     /* Responsive Main Card */
     .main-card { width: 100%; max-width: 1250px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
     .card-top { display: flex; gap: 20px; align-items: flex-start; }
 
+    /* Standard Image Viewer */
     .image-viewer { 
       width: 500px; height: 500px; min-width: 500px; background: #ffffff; 
       border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; 
@@ -117,75 +121,86 @@
     .image-viewer img { width: 100%; height: 100%; object-fit: contain; }
     
     .zoom-hint {
-      position: absolute; bottom: 10px; right: 10px; background: rgba(9, 14, 26, 0.75); color: #fff;
+      position: absolute; bottom: 10px; right: 10px; background: rgba(2, 44, 34, 0.75); color: #fff;
       padding: 4px 8px; border-radius: 4px; font-size: 0.68rem; pointer-events: none; backdrop-filter: blur(4px);
       border: 1px solid var(--border); opacity: 0.85;
     }
-    .img-loader { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #0284c7; font-size: 0.85rem; font-weight: 700; background: #ffffff; width: 100%; height: 100%; z-index: 5; }
-    .spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #0284c7; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    .img-loader { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--primary-hover); font-size: 0.85rem; font-weight: 700; background: #ffffff; width: 100%; height: 100%; z-index: 5; }
+    .spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: var(--primary-hover); border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .img-fallback { color: #64748b; font-size: 0.85rem; text-align: center; display: none; padding: 20px; z-index: 6; }
+
+    /* Elegant Special Tag styling */
+    .special-tag-badge {
+      position: absolute; top: 12px; left: 12px; 
+      background: var(--bg); color: var(--accent); 
+      border: 1px solid var(--border);
+      padding: 4px 12px; border-radius: 6px; 
+      font-size: 0.75rem; font-weight: 700; 
+      text-transform: uppercase; z-index: 10;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
 
     .variant-details { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; width: 100%; }
     .sku-badge { font-size: 1.35rem; font-weight: 800; color: var(--primary); font-family: monospace; }
     .ag-tag { font-size: 0.75rem; color: var(--text-muted); word-break: break-all; margin-top: 2px; }
-    .pill-selected { background: #065f46; color: #34d399; border: 1px solid #059669; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; }
+    .pill-selected { background: #064e3b; color: #34d399; border: 1px solid #059669; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; }
 
     .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-    .metric-box { background: #090e1a; padding: 7px 9px; border-radius: 6px; border: 1px solid var(--border); }
+    .metric-box { background: var(--bg); padding: 7px 9px; border-radius: 6px; border: 1px solid var(--border); }
     .metric-lbl { font-size: 0.62rem; color: var(--text-muted); text-transform: uppercase; }
     .metric-val { font-size: 0.9rem; font-weight: 700; color: #fff; margin-top: 2px; }
 
     .section-title { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
     
-    .detailed-tray { background: #0b1324; border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+    .detailed-tray { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
     .tray-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left; }
     .tray-table th { color: var(--text-muted); padding: 5px 6px; border-bottom: 1px solid var(--border); font-size: 0.68rem; }
-    .tray-table td { padding: 5px 6px; border-bottom: 1px solid #1a2538; }
+    .tray-table td { padding: 5px 6px; border-bottom: 1px solid var(--card-bg); }
 
     /* Sticky Bottom Bar */
     .actions-bar { 
       position: sticky; bottom: 0; left: 0; width: 100%; max-width: 1250px; 
-      background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px); 
+      background: rgba(2, 44, 34, 0.95); backdrop-filter: blur(8px); 
       border: 1px solid var(--border); border-radius: 10px; 
       padding: 10px 14px; display: flex; justify-content: space-between; 
       align-items: center; margin-top: 10px; box-shadow: 0 -8px 25px rgba(0,0,0,0.5); z-index: 500; 
     }
-    .btn-nav { background: #22324e; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 0.85rem; }
+    .btn-nav { background: var(--border); color: #fff; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 0.85rem; }
     .btn-nav:disabled { opacity: 0.3; cursor: not-allowed; }
     .btn-decision { display: flex; gap: 8px; }
     .btn-action { padding: 10px 18px; border-radius: 6px; font-size: 0.85rem; font-weight: 700; cursor: pointer; border: none; }
-    .btn-confirm { background: #16a34a; color: white; }
+    .btn-confirm { background: #059669; color: white; }
     .btn-confirmed { background: #dc2626; color: white; }
-    .export-btn { background: #2563eb; color: #fff; border: none; padding: 7px 12px; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 0.78rem; }
+    .export-btn { background: #059669; color: #fff; border: none; padding: 7px 12px; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 0.78rem; }
 
     /* Lightbox Modal */
     .lightbox-modal {
       display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(4, 7, 15, 0.94); backdrop-filter: blur(12px);
+      background: rgba(2, 44, 34, 0.96); backdrop-filter: blur(12px);
       z-index: 10000; flex-direction: column; align-items: center; justify-content: center; padding: 16px; user-select: none;
     }
     .lightbox-modal.active { display: flex; }
     .lightbox-header { width: 100%; max-width: 900px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 10px; flex-wrap: wrap; }
     .lightbox-meta { display: flex; align-items: center; gap: 8px; color: #fff; flex-wrap: wrap; }
     .lightbox-badge { font-size: 1.3rem; font-weight: 800; color: var(--primary); font-family: monospace; }
-    .lightbox-tag { font-size: 0.8rem; color: var(--text-muted); background: #131c2e; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); }
-    .lightbox-tag-wt { font-size: 0.82rem; font-weight: 700; color: #38bdf8; background: #0c213d; border-color: #0284c7; }
-    .lightbox-close-btn { background: #1e293b; color: #fff; border: 1px solid var(--border); width: 38px; height: 38px; border-radius: 50%; font-size: 1.2rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .lightbox-tag { font-size: 0.8rem; color: var(--text-muted); background: var(--card-bg); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); }
+    .lightbox-tag-wt { font-size: 0.82rem; font-weight: 700; color: var(--primary); background: var(--bg); border-color: var(--border); }
+    .lightbox-close-btn { background: var(--card-bg); color: #fff; border: 1px solid var(--border); width: 38px; height: 38px; border-radius: 50%; font-size: 1.2rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     .lightbox-close-btn:hover { background: #dc2626; border-color: #dc2626; }
     .lightbox-body { width: 100%; max-width: 900px; height: calc(100vh - 160px); max-height: 800px; background: #ffffff; border-radius: 14px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; border: 2px solid var(--border); }
     .lightbox-body img { width: 100%; height: 100%; object-fit: contain; }
-    .lightbox-actions-bar { margin-top: 12px; width: 100%; max-width: 900px; display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.95); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; backdrop-filter: blur(8px); }
+    .lightbox-actions-bar { margin-top: 12px; width: 100%; max-width: 900px; display: flex; justify-content: space-between; align-items: center; background: rgba(2, 44, 34, 0.95); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; backdrop-filter: blur(8px); }
 
     /* Download/Export Choice Modal */
     #exportModal {
       display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(4, 7, 15, 0.85); backdrop-filter: blur(8px);
+      background: rgba(2, 44, 34, 0.85); backdrop-filter: blur(8px);
       z-index: 20000; align-items: center; justify-content: center;
     }
     #exportModal.active { display: flex; }
     .export-card {
-      background: #131c2e; border: 1px solid var(--border); border-radius: 12px;
+      background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
       padding: 22px; width: 90%; max-width: 480px; box-shadow: 0 20px 40px rgba(0,0,0,0.8);
     }
     .export-card h3 { margin: 0 0 6px 0; color: var(--primary); font-size: 1.15rem; }
@@ -193,20 +208,20 @@
     .export-options-grid { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
     .export-type-btn {
       display: flex; align-items: center; justify-content: space-between;
-      background: #090e1a; border: 1px solid var(--border); color: #fff;
+      background: var(--bg); border: 1px solid var(--border); color: #fff;
       padding: 12px 14px; border-radius: 8px; cursor: pointer; text-align: left;
     }
     .export-type-btn:hover { border-color: var(--primary); }
     .pdf-field-selector {
-      background: #090e1a; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
       padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;
     }
     .pdf-field-title { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
     .pdf-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .pdf-chk-label { font-size: 0.76rem; color: #cbd5e1; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    .pdf-chk-label { font-size: 0.76rem; color: var(--text); display: flex; align-items: center; gap: 6px; cursor: pointer; }
     .export-modal-footer { display: flex; justify-content: flex-end; gap: 10px; }
-    .btn-secondary { background: #334155; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600; }
-    .btn-primary-action { background: #0284c7; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 700; }
+    .btn-secondary { background: var(--border); color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600; }
+    .btn-primary-action { background: #059669; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 700; }
 
     @media (max-width: 980px) {
       body { padding: 10px 10px 80px 10px; }
@@ -223,15 +238,15 @@
 </head>
 <body>
 
-  <!-- Manual Upload Modal (Replaces Auth) -->
+  <!-- Password Authentication -->
   <div id="authOverlay">
     <div class="auth-card">
-      <h3>In-Store Stock Catalog</h3>
-      <p>Upload your Live Stock Inventory Excel file to begin browsing.</p>
-      <input type="file" id="fileInput" class="auth-input" accept=".xlsx, .xls, .csv">
-      <button class="auth-btn" id="unlockBtn" onclick="handleFileSelect()">Load Catalog</button>
-      <div id="authLoading" class="auth-loading">⏳ Processing inventory data...</div>
-      <div id="authErr" class="auth-err">Please select a valid Excel file.</div>
+      <h3>In-Store Secured Access</h3>
+      <p>Enter the store PIN to decrypt the fetched stock data.</p>
+      <input type="password" id="passInput" class="auth-input" placeholder="Password" onkeydown="if(event.key==='Enter') decryptAndLoad()">
+      <button class="auth-btn" id="unlockBtn" onclick="decryptAndLoad()">Unlock Catalog</button>
+      <div id="authLoading" class="auth-loading">⏳ Fetching encrypted dataset...</div>
+      <div id="authErr" class="auth-err">Incorrect PIN. Access Denied.</div>
     </div>
   </div>
 
@@ -242,13 +257,11 @@
 
   <div class="control-panel">
     <div class="filter-grid">
-      <!-- Universal Live Search -->
       <div class="filter-box">
         <span class="filter-label">Search (SKU, Exact WT, Tag)</span>
-        <input type="text" class="search-input" id="skuSearchInput" placeholder="e.g. 4.250, Ring, Bestdeal..." oninput="handleUniversalSearch()">
+        <input type="text" class="search-input" id="skuSearchInput" placeholder="e.g. 4.250, Ring, Offer..." oninput="handleUniversalSearch()">
       </div>
 
-      <!-- Special Tag Filter -->
       <div class="filter-box" id="fb-tag">
         <span class="filter-label">Special Tag</span>
         <button class="dropdown-btn" onclick="toggleDropdown('tag')">All Tags</button>
@@ -267,7 +280,6 @@
         </div>
       </div>
 
-      <!-- Design Filter -->
       <div class="filter-box" id="fb-design">
         <span class="filter-label">Design</span>
         <button class="dropdown-btn" onclick="toggleDropdown('design')">All Designs</button>
@@ -411,7 +423,7 @@
         <span id="wtBetweenSpan" style="display:none; font-size:0.75rem; color:var(--text-muted);">&amp;</span>
         <input type="number" id="wtVal2" step="0.001" placeholder="Max" style="display:none;" oninput="applyFilters()">
       </div>
-      <button style="margin-left: auto; background: #334155; border: none; color: #fff; padding: 5px 10px; border-radius: 4px; font-size: 0.72rem; cursor: pointer;" onclick="resetAllFilters()">Reset Filters</button>
+      <button style="margin-left: auto; background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 5px 10px; border-radius: 4px; font-size: 0.72rem; cursor: pointer;" onclick="resetAllFilters()">Reset Filters</button>
     </div>
   </div>
 
@@ -430,10 +442,9 @@
   <div class="main-card">
     <div class="card-top">
       
-      <!-- Image & Dynamic Unique Tag Overlay -->
       <div class="image-viewer" onclick="openLightbox()" title="Click to enlarge image">
-        <div id="dispTag" style="display:none;"></div> <!-- Special Tag Badge -->
-        <div class="img-loader" id="imgLoader"><div class="spinner"></div><span>Loading image...</span></div>
+        <div id="dispTag" class="special-tag-badge" style="display:none;"></div>
+        <div class="img-loader" id="imgLoader"><div class="spinner"></div></div>
         <img id="itemImg" src="" alt="Variant Preview" onload="handleImageSuccess()" onerror="handleImageError()">
         <div id="imgFallback" class="img-fallback">Image not found on catalog server</div>
         <div class="zoom-hint">🔍 Tap to Zoom</div>
@@ -453,8 +464,8 @@
         </div>
 
         <div style="display:flex; gap:8px;">
-          <div style="flex:1; background:#090e1a; padding:7px 9px; border-radius:6px; border:1px solid var(--border);"><div class="section-title">Available Sizes</div><div id="dispSizesText" style="font-weight:700; color:#fff; font-size:0.8rem;">-</div></div>
-          <div style="flex:1; background:#090e1a; padding:7px 9px; border-radius:6px; border:1px solid var(--border);"><div class="section-title">Weight Range (WT)</div><div id="dispWtRangeText" style="font-weight:700; color:#fff; font-size:0.8rem;">-</div></div>
+          <div style="flex:1; background:var(--bg); padding:7px 9px; border-radius:6px; border:1px solid var(--border);"><div class="section-title">Available Sizes</div><div id="dispSizesText" style="font-weight:700; color:#fff; font-size:0.8rem;">-</div></div>
+          <div style="flex:1; background:var(--bg); padding:7px 9px; border-radius:6px; border:1px solid var(--border);"><div class="section-title">Weight Range (WT)</div><div id="dispWtRangeText" style="font-weight:700; color:#fff; font-size:0.8rem;">-</div></div>
         </div>
 
         <div class="detailed-tray">
@@ -473,7 +484,7 @@
   <div class="actions-bar">
     <button class="btn-nav" id="prevBtn" onclick="navigateVariant(-1)">← Prev</button>
     <div class="btn-decision">
-      <button class="btn-action" style="background:#334155; color:#fff;" onclick="navigateVariant(1)">Skip</button>
+      <button class="btn-action" style="background:var(--card-bg); border:1px solid var(--border); color:#fff;" onclick="navigateVariant(1)">Skip</button>
       <button class="btn-action btn-confirm" id="confirmBtn" onclick="toggleConfirmCurrent()">✔ Confirm</button>
     </div>
     <button class="btn-nav" id="nextBtn" onclick="navigateVariant(1)">Next →</button>
@@ -491,8 +502,8 @@
     </div>
 
     <div class="lightbox-body" id="lightboxBody">
-      <div id="modalTag" style="display:none;"></div> <!-- Special Tag Badge -->
-      <div class="img-loader" id="modalImgLoader"><div class="spinner"></div><span>Loading full-size preview...</span></div>
+      <div id="modalTag" class="special-tag-badge" style="display:none; font-size: 0.85rem; padding: 6px 14px; top: 16px; left: 16px;"></div>
+      <div class="img-loader" id="modalImgLoader"><div class="spinner"></div></div>
       <img id="modalImg" src="" alt="Enlarged Variant Preview" onload="handleModalImgSuccess()" onerror="handleModalImgError()">
       <div id="modalFallback" class="img-fallback"></div>
     </div>
@@ -500,7 +511,7 @@
     <div class="lightbox-actions-bar">
       <button class="btn-nav" id="modalPrevBtn" onclick="navigateVariant(-1)">← Prev</button>
       <div class="btn-decision">
-        <button class="btn-action" style="background:#334155; color:#fff;" onclick="navigateVariant(1)">Skip</button>
+        <button class="btn-action" style="background:var(--card-bg); border:1px solid var(--border); color:#fff;" onclick="navigateVariant(1)">Skip</button>
         <button class="btn-action btn-confirm" id="modalConfirmBtn" onclick="toggleConfirmCurrent()">✔ Confirm Selection</button>
       </div>
       <button class="btn-nav" id="modalNextBtn" onclick="navigateVariant(1)">Next →</button>
@@ -545,7 +556,6 @@
   </div>
 
   <script>
-    // Strict Domain Security Guardrail
     (function() {
       const allowedDomain = "sravanarun.github.io";
       const isLocalHost = window.location.hostname === "localhost" || 
@@ -554,9 +564,9 @@
 
       if (window.location.hostname !== allowedDomain && !isLocalHost) {
         document.body.innerHTML = `
-          <div style="background:#090e1a; color:#ef4444; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:sans-serif; text-align:center; padding:20px;">
+          <div style="background:#022c22; color:#f87171; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:sans-serif; text-align:center; padding:20px;">
             <h2 style="margin-bottom:8px; font-size:1.6rem;">Access Denied</h2>
-            <p style="color:#94a3b8; font-size:0.95rem;">Unauthorized mirror or environment detected. Execution halted.</p>
+            <p style="color:#a7f3d0; font-size:0.95rem;">Unauthorized mirror or environment detected. Execution halted.</p>
           </div>`;
         throw new Error("Execution prohibited on unauthorized host.");
       }
@@ -566,6 +576,8 @@
     let filteredGroups = [];
     let selectedVariantsMap = new Map();
     let currentIdx = 0;
+    let encryptedData = "";
+    let dataFetchPromise = null;
     let isLightboxOpen = false;
 
     const filterFields = {
@@ -590,61 +602,107 @@
       if (!isShown) menu.classList.add('show');
     }
 
-    function handleFileSelect() {
-      const fileInput = document.getElementById('fileInput');
+    // Auto-fetch the encrypted file on load
+    window.addEventListener('DOMContentLoaded', () => {
+      dataFetchPromise = fetch(`data.enc?t=${Date.now()}`)
+        .then(res => {
+          if (!res.ok) throw new Error("Could not find data.enc");
+          return res.text();
+        })
+        .then(text => {
+          encryptedData = text;
+          return text;
+        })
+        .catch(err => {
+          console.error(err);
+          return null;
+        });
+    });
+
+    // Decrypt and process the JSON just like your original code
+    async function decryptAndLoad() {
+      const pin = document.getElementById('passInput').value.trim();
       const errBox = document.getElementById('authErr');
       const loadBox = document.getElementById('authLoading');
       const btn = document.getElementById('unlockBtn');
-      
-      if (!fileInput.files.length) {
-        errBox.innerText = "Please select an Excel file first.";
+
+      errBox.style.display = 'none';
+
+      if (!pin) {
+        errBox.innerText = "Please enter your password / PIN.";
         errBox.style.display = 'block';
         return;
       }
-      
-      errBox.style.display = 'none';
-      loadBox.style.display = 'block';
-      btn.disabled = true;
 
-      const file = fileInput.files[0];
-      const reader = new FileReader();
-      
-      reader.onload = function(e) {
+      if (!encryptedData) {
+        loadBox.style.display = 'block';
+        btn.disabled = true;
         try {
-          const data = new Uint8Array(e.target.result);
-          const workbook = XLSX.read(data, {type: 'array'});
-          const firstSheet = workbook.SheetNames[0];
-          const parsedRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
-          processRawData(parsedRows);
-        } catch (err) {
-          console.error(err);
-          errBox.innerText = "Error parsing file. Make sure it's a valid Excel file.";
-          errBox.style.display = 'block';
+          encryptedData = await dataFetchPromise;
+        } catch (e) {
+          console.error(e);
+        } finally {
           loadBox.style.display = 'none';
           btn.disabled = false;
         }
-      };
-      reader.readAsArrayBuffer(file);
+      }
+
+      if (!encryptedData) {
+        errBox.innerText = "Failed to load data.enc file. Verify repository files.";
+        errBox.style.display = 'block';
+        return;
+      }
+
+      try {
+        const bytes = CryptoJS.AES.decrypt(encryptedData, pin);
+        const base64Compressed = bytes.toString(CryptoJS.enc.Utf8);
+        if (!base64Compressed) throw new Error("Incorrect Password");
+
+        const binaryStr = atob(base64Compressed);
+        const len = binaryStr.length;
+        const bytesArr = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytesArr[i] = binaryStr.charCodeAt(i);
+        }
+        const decompressedJsonStr = pako.ungzip(bytesArr, { to: 'string' });
+        const parsedRows = JSON.parse(decompressedJsonStr);
+        
+        processRawData(parsedRows);
+      } catch (e) {
+        console.error(e);
+        errBox.innerText = "Incorrect PIN. Access Denied.";
+        errBox.style.display = 'block';
+      }
     }
 
     function processRawData(parsedRows) {
       rawData = [];
       parsedRows.forEach(r => {
-        const variant = r['Item Code'] || r['Variant Code'] || r['SKU'] || r['Variant'];
+        // Robust value getter across standard column names
+        const getVal = (colNames) => {
+          for (const name of colNames) {
+            for (const key of Object.keys(r)) {
+              if (key.trim().toLowerCase() === name.toLowerCase()) return String(r[key] || '').trim();
+            }
+          }
+          return '';
+        };
+
+        const variant = getVal(['Variant', 'VARIANT', 'Variant Code', 'SKU', 'Item Code']);
         if (!variant) return;
 
         const vStr = String(variant).trim();
         r._variant = vStr;
         r._design = vStr.length >= 9 ? vStr.slice(2, 9).toUpperCase() : vStr.toUpperCase();
-        r._cat = String(r['Product Category'] || r['Category'] || '').trim();
-        r._cluster = String(r['Cluster'] || '').trim();
-        r._ag = String(r['AG'] || r['AG Group'] || '').trim();
-        r._size = String(r['size'] || r['Size'] || '').trim();
-        r._karat = String(r['Karat'] || '').trim();
-        r._prolif = String(r['Prolif'] || '').trim();
-        r._wt = parseFloat(r['Gross Weight'] || r['WT'] || 0) || 0;
+        r._cat = getVal(['Product category', 'PRODUCT CATEGORY', 'Category', 'Cat']);
+        r._cluster = getVal(['CLUSTER', 'Cluster']);
+        r._ag = getVal(['AG', 'AG Group', 'AG_GROUP']);
+        r._size = getVal(['Size', 'SIZE']);
+        r._karat = getVal(['Karat', 'KARAT']);
+        r._prolif = getVal(['Prolif', 'PROLIF']);
+        r._wt = parseFloat(getVal(['WT', 'Weight', 'Gross Wt', 'Gross Weight'])) || 0;
         
-        const rawTag = String(r['Special tag'] || '').trim();
+        const rawTag = getVal(['Special tag', 'Special Tag', 'Tag']);
         r._specialTag = rawTag;
         r._specialTagFilter = rawTag ? rawTag : 'None';
 
@@ -653,25 +711,6 @@
 
       document.getElementById('authOverlay').style.display = 'none';
       applyFilters();
-    }
-
-    function getTagStyle(tag) {
-      const norm = tag.toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (norm.includes('bestdeal')) return 'background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: #451a03; border: 1px solid #d97706; box-shadow: 0 4px 10px rgba(245, 158, 11, 0.4);';
-      if (norm.includes('mia')) return 'background: linear-gradient(135deg, #ec4899 0%, #be185d 100%); color: #fff; border: 1px solid #9d174d; box-shadow: 0 4px 10px rgba(236, 72, 153, 0.4);';
-      if (norm.includes('offer')) return 'background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); color: #fff; border: 1px solid #991b1b; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);';
-      if (norm.includes('new')) return 'background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; border: 1px solid #047857; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);';
-      
-      const colors = [
-        'background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: #fff; border: 1px solid #5b21b6;',
-        'background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: #fff; border: 1px solid #1e40af;',
-        'background: linear-gradient(135deg, #f97316 0%, #c2410c 100%); color: #fff; border: 1px solid #9a3412;',
-        'background: linear-gradient(135deg, #14b8a6 0%, #0f766e 100%); color: #fff; border: 1px solid #0f766e;'
-      ];
-      let hash = 0;
-      for (let i = 0; i < norm.length; i++) hash = norm.charCodeAt(i) + ((hash << 5) - hash);
-      const index = Math.abs(hash) % colors.length;
-      return colors[index] + ' box-shadow: 0 4px 10px rgba(0,0,0,0.3);';
     }
 
     function handleUniversalSearch() { applyFilters(); }
@@ -837,7 +876,6 @@
       const tagDisp = document.getElementById('dispTag');
       if (firstRow._specialTag) {
         tagDisp.innerText = firstRow._specialTag;
-        tagDisp.style.cssText = getTagStyle(firstRow._specialTag) + " position: absolute; top: 12px; left: 12px; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; z-index: 10;";
         tagDisp.style.display = 'block';
       } else {
         tagDisp.style.display = 'none';
@@ -883,8 +921,20 @@
       const tbody = document.getElementById('trayTbody'); tbody.innerHTML = '';
       document.getElementById('trayHeader').innerText = `Available Lots In-Store (${cur.rows.length} lots)`;
       cur.rows.forEach(r => {
+        const getVal = (colNames) => {
+          for (const name of colNames) {
+            for (const key of Object.keys(r)) {
+              if (key.trim().toLowerCase() === name.toLowerCase()) return String(r[key] || '').trim();
+            }
+          }
+          return '';
+        };
+        const lotVal = getVal(['LOT Number', 'Lotno', 'Lot No']) || '-';
+        const qtyVal = getVal(['Quantity', 'Actual Quantity', 'Qty']) || 1;
+        const priceVal = getVal(['Final Price - Pre Tax Value', 'Val']) || 0;
+        
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td style="font-family:monospace; color:var(--primary);">${r['LOT Number'] || r['Lotno'] || '-'}</td><td>${r['Quantity'] || r['Actual Quantity'] || r['Qty'] || 1}</td><td><b>${r._wt.toFixed(3)}</b></td><td>${r._size}</td><td>₹${Number(r['Final Price - Pre Tax Value'] || r['Val'] || 0).toLocaleString('en-IN')}</td>`;
+        tr.innerHTML = `<td style="font-family:monospace; color:var(--primary);">${lotVal}</td><td>${qtyVal}</td><td><b>${r._wt.toFixed(3)}</b></td><td>${r._size}</td><td>₹${Number(priceVal).toLocaleString('en-IN')}</td>`;
         tbody.appendChild(tr);
       });
     }
@@ -900,7 +950,7 @@
       document.getElementById('imgLoader').style.display = 'none'; img.style.display = 'none';
       const fallback = document.getElementById('imgFallback'); fallback.style.display = 'flex';
       fallback.style.flexDirection = 'column'; fallback.style.alignItems = 'center'; fallback.style.justifyContent = 'center';
-      fallback.innerHTML = `<div style="font-size: 2.2rem; margin-bottom: 6px;">🖼️</div><div style="font-weight: 700; color: #334155;">No Catalog Image Found</div><div style="font-size: 0.72rem; color: #94a3b8; margin-top: 4px;">Design: ${dCode || 'N/A'}</div>`;
+      fallback.innerHTML = `<div style="font-size: 2.2rem; margin-bottom: 6px;">🖼️</div><div style="font-weight: 700; color: #64748b;">No Catalog Image Found</div><div style="font-size: 0.72rem; color: #94a3b8; margin-top: 4px;">Design: ${dCode || 'N/A'}</div>`;
     }
 
     function openLightbox() { if (filteredGroups.length === 0) return; isLightboxOpen = true; document.getElementById('lightboxModal').classList.add('active'); syncLightboxContent(); }
@@ -922,7 +972,6 @@
       const modalTag = document.getElementById('modalTag');
       if (firstRow._specialTag) {
         modalTag.innerText = firstRow._specialTag;
-        modalTag.style.cssText = getTagStyle(firstRow._specialTag) + " position: absolute; top: 16px; left: 16px; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; z-index: 10;";
         modalTag.style.display = 'block';
       } else { modalTag.style.display = 'none'; }
 
@@ -947,7 +996,7 @@
       document.getElementById('modalImgLoader').style.display = 'none'; img.style.display = 'none';
       const fallback = document.getElementById('modalFallback'); fallback.style.display = 'flex';
       fallback.style.flexDirection = 'column'; fallback.style.alignItems = 'center'; fallback.style.justifyContent = 'center';
-      fallback.innerHTML = `<div style="font-size: 3rem; margin-bottom: 6px;">🖼️</div><div style="font-weight: 700; color: #334155;">No Catalog Image Found</div><div style="font-size: 0.8rem; color: #94a3b8; margin-top: 4px;">Design: ${dCode || 'N/A'}</div>`;
+      fallback.innerHTML = `<div style="font-size: 3rem; margin-bottom: 6px;">🖼️</div><div style="font-weight: 700; color: #64748b;">No Catalog Image Found</div><div style="font-size: 0.8rem; color: #94a3b8; margin-top: 4px;">Design: ${dCode || 'N/A'}</div>`;
     }
 
     let touchStartX = 0; let touchEndX = 0;
@@ -1018,7 +1067,6 @@
       const uniqueVariants = Array.from(selectedVariantsMap.values());
       const totalItems = uniqueVariants.length;
       
-      // PHASE 1: BATCH FETCH
       const BATCH_SIZE = 15;
       const preloadedImages = [];
 
@@ -1039,7 +1087,6 @@
         preloadedImages.push(...batchResults);
       }
 
-      // PHASE 2: BUILD PDF
       actionBtn.innerText = "⏳ Assembling PDF Document...";
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'mm', 'a4');
@@ -1056,7 +1103,8 @@
         const col = pagePos % cols; const row = Math.floor(pagePos / cols);
         const x = startX + col * (cardWidth + gapX); const y = startY + row * (cardHeight + gapY);
 
-        pdf.setDrawColor(203, 213, 225); pdf.setLineWidth(0.4); pdf.setFillColor(255, 255, 255);
+        pdf.setDrawColor(4, 120, 87); // Emerald border for PDF cards
+        pdf.setLineWidth(0.4); pdf.setFillColor(255, 255, 255);
         pdf.roundedRect(x, y, cardWidth, cardHeight, 3, 3, 'FD');
 
         const firstRow = grp[0];
@@ -1064,8 +1112,8 @@
         if (base64Img) {
           pdf.addImage(base64Img, 'JPEG', x + imgOffsetX, y + 4, imgSize, imgSize);
         } else {
-          pdf.setFillColor(248, 250, 252); pdf.rect(x + imgOffsetX, y + 4, imgSize, imgSize, 'F');
-          pdf.setFontSize(8); pdf.setTextColor(148, 163, 184);
+          pdf.setFillColor(241, 253, 245); pdf.rect(x + imgOffsetX, y + 4, imgSize, imgSize, 'F');
+          pdf.setFontSize(8); pdf.setTextColor(52, 211, 153);
           pdf.text("Image Unavailable", x + cardWidth / 2, y + 44, { align: 'center' });
         }
 
@@ -1073,21 +1121,21 @@
         let currentTextY = y + 91;
 
         if (incVariant) {
-          pdf.setFontSize(10); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(2, 132, 199); 
+          pdf.setFontSize(10); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(4, 120, 87); 
           pdf.text(firstRow._variant, x + 6, currentTextY); currentTextY += 5.5;
         }
         if (incDesign) {
-          pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(15, 23, 42); 
+          pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(2, 44, 34); 
           pdf.text(`DSN: ${firstRow._design}`, x + 6, currentTextY); currentTextY += 5.5;
         }
 
         let col1Y = currentTextY;
         if (incTag && firstRow._specialTag) {
-          pdf.setFontSize(8); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(234, 88, 12); 
+          pdf.setFontSize(8); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(217, 119, 6); 
           pdf.text(`★ TAG: ${firstRow._specialTag.toUpperCase()}`, x + 6, col1Y); col1Y += 4.5;
         }
         
-        pdf.setFont('helvetica', 'normal'); pdf.setTextColor(51, 65, 85);
+        pdf.setFont('helvetica', 'normal'); pdf.setTextColor(2, 44, 34);
         if (incCat) { pdf.text(`Cat: ${firstRow._cat || '-'}`, x + 6, col1Y); col1Y += 4.5; }
         if (incAg) { pdf.text(`AG: ${(firstRow._ag || '-').substring(0, 22)}`, x + 6, col1Y); col1Y += 4.5; }
         if (incCluster) { pdf.text(`Cluster: ${firstRow._cluster || '-'}`, x + 6, col1Y); col1Y += 4.5; }
@@ -1116,7 +1164,7 @@
           clearTimeout(timeoutId);
           try {
             const canvas = document.createElement('canvas');
-            const MAX_DIM = 500; // Optimal 500px resolution
+            const MAX_DIM = 500;
             let w = img.naturalWidth || 500; let h = img.naturalHeight || 500;
             if (w > MAX_DIM || h > MAX_DIM) {
               const ratio = Math.min(MAX_DIM / w, MAX_DIM / h); w *= ratio; h *= ratio;
@@ -1124,7 +1172,7 @@
             canvas.width = w; canvas.height = h;
             const ctx = canvas.getContext('2d');
             ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
-            resolve(canvas.toDataURL('image/jpeg', 0.80)); // 80% Quality
+            resolve(canvas.toDataURL('image/jpeg', 0.80));
           } catch (e) { reject(e); }
         };
         img.onerror = () => { clearTimeout(timeoutId); reject(new Error('Image fetch failed')); };
