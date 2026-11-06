@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>In-Store Stock Catalogue</title>
+  
+  <!-- Excel & PDF Engines -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #090e1a;
+      --card-bg: #131c2e;
+      --panel-bg: #0f172a;
+      --border: #22324e;
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --accent: #10b981;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background: var(--bg); color: var(--text); margin: 0; padding: 12px 14px 80px 14px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+
+    /* Upload Auth Modal */
+    #authOverlay {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(9, 14, 26, 0.98); z-index: 99999; display: flex;
+      align-items: center; justify-content: center; flex-direction: column;
+    }
+    .auth-card {
+      background: #131c2e; border: 1px solid var(--border); padding: 26px;
+      border-radius: 12px; max-width: 380px; width: 90%; text-align: center;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+    }
+    .auth-card h3 { color: var(--primary); margin: 0 0 8px 0; }
+    .auth-card p { color: var(--text-muted); font-size: 0.85rem; margin: 0 0 18px 0; }
+    .auth-input[type="file"] {
+      width: 100%; padding: 10px; background: #090e1a; border: 1px dashed #334155;
+      color: #fff; border-radius: 6px; font-size: 0.85rem; outline: none; margin-bottom: 16px; cursor: pointer;
+    }
+    .auth-input[type="file"]::file-selector-button {
+      background: #1e293b; color: #fff; border: 1px solid #334155;
+      padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-right: 10px; font-weight: 600;
+    }
+    .auth-input[type="file"]::file-selector-button:hover { background: #334155; }
+    .auth-btn {
+      width: 100%; padding: 12px; background: #0284c7; border: none;
+      color: #fff; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 0.95rem;
+    }
+    .auth-btn:hover { background: #0369a1; }
+    .auth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .auth-err { color: #ef4444; font-size: 0.82rem; margin-top: 10px; display: none; }
+    .auth-loading { color: var(--primary); font-size: 0.82rem; margin-top: 10px; display: none; }
+
+    /* Header & Panel */
+    .header { width: 100%; max-width: 1250px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .header h2 { margin: 0; font-size: 1.35rem; color: var(--primary); }
+    .control-panel { width: 100%; max-width: 1250px; background: var(--panel-bg); padding: 12px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; }
+    
+    .filter-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 6px; width: 100%; }
+    .filter-box { display: flex; flex-direction: column; gap: 3px; position: relative; }
+    .filter-label { font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+
+    /* Search & Wide Boxes */
+    .search-input { background: #090e1a; border: 1px solid var(--border); color: #fff; padding: 7px 10px; border-radius: 6px; font-size: 0.78rem; outline: none; width: 100%; }
+    .search-input:focus { border-color: var(--primary); }
+    .filter-box-wide { grid-column: span 2; min-width: 250px; }
+
+    .dropdown-btn { background: #090e1a; color: var(--text); border: 1px solid var(--border); padding: 7px 10px; border-radius: 6px; font-size: 0.78rem; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dropdown-btn:hover { border-color: var(--primary); }
+    .dropdown-btn::after { content: "▾"; font-size: 0.75rem; margin-left: 6px; color: var(--text-muted); flex-shrink: 0; }
+    
+    .dropdown-menu { display: none; position: absolute; top: calc(100% + 4px); left: 0; min-width: 220px; max-height: 310px; background: #0b1324; border: 1px solid var(--border); border-radius: 8px; z-index: 1000; flex-direction: column; padding: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.8); }
+    .dropdown-menu.show { display: flex; }
+    .dropdown-menu-wide { min-width: 440px; max-width: 520px; max-height: 380px; }
+
+    /* Dropdown Toolbar */
+    .dropdown-toolbar { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+    .select-all-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem; color: var(--primary); cursor: pointer; padding: 2px 4px; }
+    .select-all-row:hover { background: #1e293b; border-radius: 4px; }
+    .select-all-label { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; font-weight: 600; }
+
+    .dropdown-search { background: #090e1a; border: 1px solid var(--border); color: #fff; padding: 6px 8px; border-radius: 4px; font-size: 0.76rem; outline: none; }
+    .dropdown-search:focus { border-color: var(--primary); }
+    .dropdown-list { overflow-y: auto; display: flex; flex-direction: column; gap: 3px; max-height: 180px; }
+    .dropdown-menu-wide .dropdown-list { max-height: 260px; }
+
+    .dropdown-item { display: flex; align-items: flex-start; gap: 6px; font-size: 0.76rem; cursor: pointer; padding: 5px 6px; border-radius: 4px; word-break: break-all; }
+    .dropdown-item:hover { background: #1e293b; }
+    .dropdown-item input { margin-top: 2px; flex-shrink: 0; }
+
+    .weight-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .weight-row select, .weight-row input { background: #090e1a; border: 1px solid var(--border); color: var(--text); padding: 6px 8px; border-radius: 6px; font-size: 0.78rem; outline: none; }
+    .weight-row select { width: 120px; }
+    .weight-row input { width: 75px; }
+
+    /* Stats Bar and Bulk Selectors */
+    .stats-bar { width: 100%; max-width: 1250px; display: flex; justify-content: space-between; align-items: center; background: #0f172a; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 10px; font-size: 0.78rem; color: var(--text-muted); flex-wrap: wrap; gap: 8px; }
+    .stats-bar b { color: var(--primary); }
+    .bulk-btn-group { display: flex; gap: 6px; align-items: center; }
+    .btn-bulk { background: #1e293b; border: 1px solid var(--border); color: #cbd5e1; padding: 4px 8px; border-radius: 4px; font-size: 0.72rem; cursor: pointer; font-weight: 600; }
+    .btn-bulk:hover { border-color: var(--primary); color: #fff; }
+    .btn-bulk-danger:hover { border-color: #ef4444; color: #ef4444; }
+
+    /* Responsive Main Card */
+    .main-card { width: 100%; max-width: 1250px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+    .card-top { display: flex; gap: 20px; align-items: flex-start; }
+
+    .image-viewer { 
+      width: 500px; height: 500px; min-width: 500px; background: #ffffff; 
+      border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; 
+      border: 1px solid var(--border); position: relative; cursor: zoom-in;
+    }
+    .image-viewer img { width: 100%; height: 100%; object-fit: contain; }
+    
+    .zoom-hint {
+      position: absolute; bottom: 10px; right: 10px; background: rgba(9, 14, 26, 0.75); color: #fff;
+      padding: 4px 8px; border-radius: 4px; font-size: 0.68rem; pointer-events: none; backdrop-filter: blur(4px);
+      border: 1px solid var(--border); opacity: 0.85;
+    }
+    .img-loader { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #0284c7; font-size: 0.85rem; font-weight: 700; background: #ffffff; width: 100%; height: 100%; z-index: 5; }
+    .spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #0284c7; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .img-fallback { color: #64748b; font-size: 0.85rem; text-align: center; display: none; padding: 20px; z-index: 6; }
+
+    .variant-details { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; width: 100%; }
+    .sku-badge { font-size: 1.35rem; font-weight: 800; color: var(--primary); font-family: monospace; }
+    .ag-tag { font-size: 0.75rem; color: var(--text-muted); word-break: break-all; margin-top: 2px; }
+    .pill-selected { background: #065f46; color: #34d399; border: 1px solid #059669; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; }
+
+    .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .metric-box { background: #090e1a; padding: 7px 9px; border-radius: 6px; border: 1px solid var(--border); }
+    .metric-lbl { font-size: 0.62rem; color: var(--text-muted); text-transform: uppercase; }
+    .metric-val { font-size: 0.9rem; font-weight: 700; color: #fff; margin-top: 2px; }
+
+    .section-title { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+    
+    .detailed-tray { background: #0b1324; border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+    .tray-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left; }
+    .tray-table th { color: var(--text-muted); padding: 5px 6px; border-bottom: 1px solid var(--border); font-size: 0.68rem; }
+    .tray-table td { padding: 5px 6px; border-bottom: 1px solid #1a2538; }
+
+    /* Sticky Bottom Bar */
+    .actions-bar { 
+      position: sticky; bottom: 0; left: 0; width: 100%; max-width: 1250px; 
+      background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px); 
+      border: 1px solid var(--border); border-radius: 10px; 
+      padding: 10px 14px; display: flex; justify-content: space-between; 
+      align-items: center; margin-top: 10px; box-shadow: 0 -8px 25px rgba(0,0,0,0.5); z-index: 500; 
+    }
+    .btn-nav { background: #22324e; color: #fff; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 0.85rem; }
+    .btn-nav:disabled { opacity: 0.3; cursor: not-allowed; }
+    .btn-decision { display: flex; gap: 8px; }
+    .btn-action { padding: 10px 18px; border-radius: 6px; font-size: 0.85rem; font-weight: 700; cursor: pointer; border: none; }
+    .btn-confirm { background: #16a34a; color: white; }
+    .btn-confirmed { background: #dc2626; color: white; }
+    .export-btn { background: #2563eb; color: #fff; border: none; padding: 7px 12px; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 0.78rem; }
+
+    /* Lightbox Modal */
+    .lightbox-modal {
+      display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(4, 7, 15, 0.94); backdrop-filter: blur(12px);
+      z-index: 10000; flex-direction: column; align-items: center; justify-content: center; padding: 16px; user-select: none;
+    }
+    .lightbox-modal.active { display: flex; }
+    .lightbox-header { width: 100%; max-width: 900px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 10px; flex-wrap: wrap; }
+    .lightbox-meta { display: flex; align-items: center; gap: 8px; color: #fff; flex-wrap: wrap; }
+    .lightbox-badge { font-size: 1.3rem; font-weight: 800; color: var(--primary); font-family: monospace; }
+    .lightbox-tag { font-size: 0.8rem; color: var(--text-muted); background: #131c2e; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); }
+    .lightbox-tag-wt { font-size: 0.82rem; font-weight: 700; color: #38bdf8; background: #0c213d; border-color: #0284c7; }
+    .lightbox-close-btn { background: #1e293b; color: #fff; border: 1px solid var(--border); width: 38px; height: 38px; border-radius: 50%; font-size: 1.2rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .lightbox-close-btn:hover { background: #dc2626; border-color: #dc2626; }
+    .lightbox-body { width: 100%; max-width: 900px; height: calc(100vh - 160px); max-height: 800px; background: #ffffff; border-radius: 14px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; border: 2px solid var(--border); }
+    .lightbox-body img { width: 100%; height: 100%; object-fit: contain; }
+    .lightbox-actions-bar { margin-top: 12px; width: 100%; max-width: 900px; display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.95); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; backdrop-filter: blur(8px); }
+
+    /* Download/Export Choice Modal */
+    #exportModal {
+      display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(4, 7, 15, 0.85); backdrop-filter: blur(8px);
+      z-index: 20000; align-items: center; justify-content: center;
+    }
+    #exportModal.active { display: flex; }
+    .export-card {
+      background: #131c2e; border: 1px solid var(--border); border-radius: 12px;
+      padding: 22px; width: 90%; max-width: 480px; box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+    }
+    .export-card h3 { margin: 0 0 6px 0; color: var(--primary); font-size: 1.15rem; }
+    .export-card p { font-size: 0.8rem; color: var(--text-muted); margin: 0 0 16px 0; }
+    .export-options-grid { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
+    .export-type-btn {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #090e1a; border: 1px solid var(--border); color: #fff;
+      padding: 12px 14px; border-radius: 8px; cursor: pointer; text-align: left;
+    }
+    .export-type-btn:hover { border-color: var(--primary); }
+    .pdf-field-selector {
+      background: #090e1a; border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;
+    }
+    .pdf-field-title { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
+    .pdf-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .pdf-chk-label { font-size: 0.76rem; color: #cbd5e1; display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    .export-modal-footer { display: flex; justify-content: flex-end; gap: 10px; }
+    .btn-secondary { background: #334155; color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600; }
+    .btn-primary-action { background: #0284c7; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 700; }
+
+    @media (max-width: 980px) {
+      body { padding: 10px 10px 80px 10px; }
+      .card-top { flex-direction: column; align-items: center; gap: 16px; }
+      .image-viewer { width: 100%; max-width: 440px; height: auto; aspect-ratio: 1 / 1; min-width: 0; }
+      .metric-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+      .filter-grid { grid-template-columns: repeat(2, 1fr); }
+      .filter-box-wide { grid-column: span 2; min-width: 100%; }
+      .dropdown-menu-wide { min-width: 90vw; max-width: 90vw; }
+      .btn-nav, .btn-action { padding: 10px 14px; font-size: 0.82rem; }
+      .lightbox-body { height: calc(100vh - 200px); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Manual Upload Modal (Replaces Auth) -->
+  <div id="authOverlay">
+    <div class="auth-card">
+      <h3>In-Store Stock Catalog</h3>
+      <p>Upload your Live Stock Inventory Excel file to begin browsing.</p>
+      <input type="file" id="fileInput" class="auth-input" accept=".xlsx, .xls, .csv">
+      <button class="auth-btn" id="unlockBtn" onclick="handleFileSelect()">Load Catalog</button>
+      <div id="authLoading" class="auth-loading">⏳ Processing inventory data...</div>
+      <div id="authErr" class="auth-err">Please select a valid Excel file.</div>
+    </div>
+  </div>
+
+  <div class="header">
+    <h2>In-Store Catalogue</h2>
+    <button class="export-btn" onclick="openExportModal()">📥 Download Selected (<span id="exportCount">0</span>)</button>
+  </div>
+
+  <div class="control-panel">
+    <div class="filter-grid">
+      <!-- Universal Live Search -->
+      <div class="filter-box">
+        <span class="filter-label">Search (SKU, Exact WT, Tag)</span>
+        <input type="text" class="search-input" id="skuSearchInput" placeholder="e.g. 4.250, Ring, Bestdeal..." oninput="handleUniversalSearch()">
+      </div>
+
+      <!-- Special Tag Filter -->
+      <div class="filter-box" id="fb-tag">
+        <span class="filter-label">Special Tag</span>
+        <button class="dropdown-btn" onclick="toggleDropdown('tag')">All Tags</button>
+        <div class="dropdown-menu" id="menu-tag">
+          <div class="dropdown-toolbar">
+            <div class="select-all-row" onclick="toggleSelectAllDropdown('tag')">
+              <span class="select-all-label">
+                <input type="checkbox" id="chk-all-tag" onclick="event.stopPropagation(); toggleSelectAllDropdown('tag')">
+                <span>Select All</span>
+              </span>
+              <small id="lbl-all-tag" style="color:var(--text-muted);">0 / 0</small>
+            </div>
+            <input type="text" class="dropdown-search" placeholder="Search tag..." oninput="filterChecklist('tag', this.value)">
+          </div>
+          <div class="dropdown-list" id="list-tag"></div>
+        </div>
+      </div>
+
+      <!-- Design Filter -->
+      <div class="filter-box" id="fb-design">
+        <span class="filter-label">Design</span>
+        <button class="dropdown-btn" onclick="toggleDropdown('design')">All Designs</button>
+        <div class="dropdown-menu" id="menu-design">
+          <div class="dropdown-toolbar">
+            <div class="select-all-row" onclick="toggleSelectAllDropdown('design')">
+              <span class="select-all-label">
+                <input type="checkbox" id="chk-all-design" onclick="event.stopPropagation(); toggleSelectAllDropdown('design')">
+                <span>Select All</span>
+              </span>
+              <small id="lbl-all-design" style="color:var(--text-muted);">0 / 0</small>
+            </div>
+            <input type="text" class="dropdown-search" placeholder="Search design..." oninput="filterChecklist('design', this.value)">
+          </div>
+          <div class="dropdown-list" id="list-design"></div>
+        </div>
+      </div>
+
+      <div class="filter-box" id="fb-cat">
+        <span class="filter-label">Product Cat</span>
+        <button class="dropdown-btn" onclick="toggleDropdown('cat')">All Categories</button>
+        <div class="dropdown-menu" id="menu-cat">
+          <div class="dropdown-toolbar">
+            <div class="select-all-row" onclick="toggleSelectAllDropdown('cat')">
+              <span class="select-all-label">
+                <input type="checkbox" id="chk-all-cat" onclick="event.stopPropagation(); toggleSelectAllDropdown('cat')">
+                <span>Select All</span>
+              </span>
+              <small id="lbl-all-cat" style="color:var(--text-muted);">0 / 0</small>
+            </div>
+            <input type="text" class="dropdown-search" placeholder="Search..." oninput="filterChecklist('cat', this.value)">
+          </div>
+          <div class="dropdown-list" id="list-cat"></div>
+        </div>
+      </div>
+
+      <div class="filter-box" id="fb-cluster">
+        <span class="filter-label">Cluster</span>
+        <button class="dropdown-btn" onclick="toggleDropdown('cluster')">All Clusters</button>
+        <div class="dropdown-menu" id="menu-cluster">
+          <div class="dropdown-toolbar">
+            <div class="select-all-row" onclick="toggleSelectAllDropdown('cluster')">
+              <span class="select-all-label">
+                <input type="checkbox" id="chk-all-cluster" onclick="event.stopPropagation(); toggleSelectAllDropdown('cluster')">
+                <span>Select All</span>
+              </span>
+              <small id="lbl-all-cluster" style="color:var(--text-muted);">0 / 0</small>
+            </div>
+            <input type="text" class="dropdown-search" placeholder="Search..." oninput="filterChecklist('cluster', this.value)">
+          </div>
+          <div class="dropdown-list" id="list-cluster"></div>
+        </div>
+      </div>
+      
+      <div class="filter-box filter-box-wide" id="fb-ag">
+        <span class="filter-label">AG Group</span>
+        <button class="dropdown-btn" onclick="toggleDropdown('ag')">All AGs</button>
+        <div class="dropdown-menu dropdown-menu-wide" id="menu-ag">
+          <div class="dropdown-toolbar">
+            <div class="select-all-row" onclick="toggleSelectAllDropdown('ag')">
+              <span class="select-all-label">
+                <input type="checkbox" id="chk-all-ag" onclick="event.stopPropagation(); toggleSelectAllDropdown('ag')">
+                <span>Select All</span>
+              </span>
+              <small id="lbl-all-ag" style="color:var(--text-muted);">0 / 0</small>
+            </div>
+            <input type="text" class="dropdown-search" placeholder="Search AG..." oninput="filterChecklist('ag', this.value)">
+          </div>
+          <div class="dropdown-list" id="list-ag"></div>
+        </div>
+      </div>
+      
+      <div class="filter-box" id="fb-size">
+        <span class="filter-label">Size</span>
+        <button class="dropdown-btn" onclick="toggleDropdown('size')">All Sizes</button>
+        <div class="dropdown-menu" id="menu-size">
+          <div class="dropdown-toolbar">
+            <div class="select-all-row" onclick="toggleSelectAllDropdown('size')">
+              <span class="select-all-label">
+                <input type="checkbox" id="chk-all-size" onclick="event.stopPropagation(); toggleSelectAllDropdown('size')">
+                <span>Select All</span>
+              </span>
+              <small id="lbl-all-size" style="color:var(--text-muted);">0 / 0</small>
+            </div>
+            <input type="text" class="dropdown-search" placeholder="Search size..." oninput="filterChecklist('size', this.value)">
+          </div>
+          <div class="dropdown-list" id="list-size"></div>
+        </div>
+      </div>
+
+      <div class="filter-box" id="fb-karat">
+        <span class="filter-label">Karat</span>
+        <button class="dropdown-btn" onclick="toggleDropdown('karat')">All Karats</button>
+        <div class="dropdown-menu" id="menu-karat">
+          <div class="dropdown-toolbar">
+            <div class="select-all-row" onclick="toggleSelectAllDropdown('karat')">
+              <span class="select-all-label">
+                <input type="checkbox" id="chk-all-karat" onclick="event.stopPropagation(); toggleSelectAllDropdown('karat')">
+                <span>Select All</span>
+              </span>
+              <small id="lbl-all-karat" style="color:var(--text-muted);">0 / 0</small>
+            </div>
+            <input type="text" class="dropdown-search" placeholder="Search karat..." oninput="filterChecklist('karat', this.value)">
+          </div>
+          <div class="dropdown-list" id="list-karat"></div>
+        </div>
+      </div>
+
+      <div class="filter-box" id="fb-prolif">
+        <span class="filter-label">Prolif</span>
+        <button class="dropdown-btn" onclick="toggleDropdown('prolif')">All Prolifs</button>
+        <div class="dropdown-menu" id="menu-prolif">
+          <div class="dropdown-toolbar">
+            <div class="select-all-row" onclick="toggleSelectAllDropdown('prolif')">
+              <span class="select-all-label">
+                <input type="checkbox" id="chk-all-prolif" onclick="event.stopPropagation(); toggleSelectAllDropdown('prolif')">
+                <span>Select All</span>
+              </span>
+              <small id="lbl-all-prolif" style="color:var(--text-muted);">0 / 0</small>
+            </div>
+            <input type="text" class="dropdown-search" placeholder="Search prolif..." oninput="filterChecklist('prolif', this.value)">
+          </div>
+          <div class="dropdown-list" id="list-prolif"></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--border);">
+      <span class="filter-label">Weight (WT):</span>
+      <div class="weight-row">
+        <select id="wtOp" onchange="handleWtOpChange()">
+          <option value="any">Any Weight</option>
+          <option value="eq">Equals (=)</option>
+          <option value="gt">Greater Than (&gt;)</option>
+          <option value="gte">Greater Than or Equal (&gt;=)</option>
+          <option value="lt">Less Than (&lt;)</option>
+          <option value="lte">Less Than or Equal (&lt;=)</option>
+          <option value="between">Between</option>
+        </select>
+        <input type="number" id="wtVal1" step="0.001" placeholder="Val" style="display:none;" oninput="applyFilters()">
+        <span id="wtBetweenSpan" style="display:none; font-size:0.75rem; color:var(--text-muted);">&amp;</span>
+        <input type="number" id="wtVal2" step="0.001" placeholder="Max" style="display:none;" oninput="applyFilters()">
+      </div>
+      <button style="margin-left: auto; background: #334155; border: none; color: #fff; padding: 5px 10px; border-radius: 4px; font-size: 0.72rem; cursor: pointer;" onclick="resetAllFilters()">Reset Filters</button>
+    </div>
+  </div>
+
+  <div class="stats-bar">
+    <div>Filtered Unique Variants: <b id="statVariantCount">0</b> <span id="statTotalUnits" style="color:var(--text-muted); font-size:0.78rem;"></span></div>
+    <div>Viewing: <b id="statCurIdx">0</b> of <span id="statMaxIdx">0</span></div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div>Selected: <b id="statSelectedCount">0</b></div>
+      <div class="bulk-btn-group">
+        <button class="btn-bulk" onclick="selectAllFilteredVariants()" title="Select and confirm all currently filtered variants">Select Filtered</button>
+        <button class="btn-bulk btn-bulk-danger" onclick="unselectAllVariants()" title="Clear all confirmed selections">Clear All</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-card">
+    <div class="card-top">
+      
+      <!-- Image & Dynamic Unique Tag Overlay -->
+      <div class="image-viewer" onclick="openLightbox()" title="Click to enlarge image">
+        <div id="dispTag" style="display:none;"></div> <!-- Special Tag Badge -->
+        <div class="img-loader" id="imgLoader"><div class="spinner"></div><span>Loading image...</span></div>
+        <img id="itemImg" src="" alt="Variant Preview" onload="handleImageSuccess()" onerror="handleImageError()">
+        <div id="imgFallback" class="img-fallback">Image not found on catalog server</div>
+        <div class="zoom-hint">🔍 Tap to Zoom</div>
+      </div>
+
+      <div class="variant-details">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div><div class="sku-badge" id="dispVariant">---</div><div class="ag-tag" id="dispAG">---</div></div>
+          <div><span id="dispSelectedBadge" class="pill-selected" style="display:none;">CONFIRMED</span></div>
+        </div>
+
+        <div class="metric-grid">
+          <div class="metric-box"><div class="metric-lbl">Product Cat</div><div class="metric-val" id="dispCat">-</div></div>
+          <div class="metric-box"><div class="metric-lbl">Cluster</div><div class="metric-val" id="dispCluster">-</div></div>
+          <div class="metric-box"><div class="metric-lbl">Karat / Prolif</div><div class="metric-val" id="dispKaratProlif">-</div></div>
+          <div class="metric-box"><div class="metric-lbl">Total Stock</div><div class="metric-val" id="dispTotalQty">0 pcs</div></div>
+        </div>
+
+        <div style="display:flex; gap:8px;">
+          <div style="flex:1; background:#090e1a; padding:7px 9px; border-radius:6px; border:1px solid var(--border);"><div class="section-title">Available Sizes</div><div id="dispSizesText" style="font-weight:700; color:#fff; font-size:0.8rem;">-</div></div>
+          <div style="flex:1; background:#090e1a; padding:7px 9px; border-radius:6px; border:1px solid var(--border);"><div class="section-title">Weight Range (WT)</div><div id="dispWtRangeText" style="font-weight:700; color:#fff; font-size:0.8rem;">-</div></div>
+        </div>
+
+        <div class="detailed-tray">
+          <div style="font-size:0.75rem; font-weight:700; color:var(--primary); margin-bottom:6px;" id="trayHeader">Available Lots In-Store</div>
+          <div style="max-height: 250px; overflow-y: auto;">
+            <table class="tray-table">
+              <thead><tr><th>Lot No</th><th>Qty</th><th>WT (g)</th><th>Size</th><th>Value (₹)</th></tr></thead>
+              <tbody id="trayTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions-bar">
+    <button class="btn-nav" id="prevBtn" onclick="navigateVariant(-1)">← Prev</button>
+    <div class="btn-decision">
+      <button class="btn-action" style="background:#334155; color:#fff;" onclick="navigateVariant(1)">Skip</button>
+      <button class="btn-action btn-confirm" id="confirmBtn" onclick="toggleConfirmCurrent()">✔ Confirm</button>
+    </div>
+    <button class="btn-nav" id="nextBtn" onclick="navigateVariant(1)">Next →</button>
+  </div>
+
+  <div class="lightbox-modal" id="lightboxModal" onclick="handleLightboxBackdropClick(event)">
+    <div class="lightbox-header">
+      <div class="lightbox-meta">
+        <span class="lightbox-badge" id="modalDesignBadge">---</span>
+        <span class="lightbox-tag" id="modalMetaTag">-</span>
+        <span class="lightbox-tag lightbox-tag-wt" id="modalWtTag">WT: -</span>
+        <span class="lightbox-tag" id="modalIdxTag">0 of 0</span>
+      </div>
+      <button class="lightbox-close-btn" onclick="closeLightbox()" title="Close (Esc)">✕</button>
+    </div>
+
+    <div class="lightbox-body" id="lightboxBody">
+      <div id="modalTag" style="display:none;"></div> <!-- Special Tag Badge -->
+      <div class="img-loader" id="modalImgLoader"><div class="spinner"></div><span>Loading full-size preview...</span></div>
+      <img id="modalImg" src="" alt="Enlarged Variant Preview" onload="handleModalImgSuccess()" onerror="handleModalImgError()">
+      <div id="modalFallback" class="img-fallback"></div>
+    </div>
+
+    <div class="lightbox-actions-bar">
+      <button class="btn-nav" id="modalPrevBtn" onclick="navigateVariant(-1)">← Prev</button>
+      <div class="btn-decision">
+        <button class="btn-action" style="background:#334155; color:#fff;" onclick="navigateVariant(1)">Skip</button>
+        <button class="btn-action btn-confirm" id="modalConfirmBtn" onclick="toggleConfirmCurrent()">✔ Confirm Selection</button>
+      </div>
+      <button class="btn-nav" id="modalNextBtn" onclick="navigateVariant(1)">Next →</button>
+    </div>
+  </div>
+
+  <div id="exportModal">
+    <div class="export-card">
+      <h3>Select Export Format</h3>
+      <p>Choose whether to generate an Excel worksheet or a structured visual PDF catalog.</p>
+      
+      <div class="export-options-grid">
+        <div class="export-type-btn" onclick="exportSelectedExcel()">
+          <div>
+            <b style="color:var(--primary);">📊 Download Excel (.xlsx)</b>
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Original detailed data spreadsheet</div>
+          </div>
+          <span>➔</span>
+        </div>
+      </div>
+
+      <div class="pdf-field-selector">
+        <div class="pdf-field-title">Visual PDF Card Attributes to Include:</div>
+        <div class="pdf-fields-grid">
+          <label class="pdf-chk-label"><input type="checkbox" id="pdfChkVariant" checked> SKU / Variant</label>
+          <label class="pdf-chk-label"><input type="checkbox" id="pdfChkDesign"> Design Code</label>
+          <label class="pdf-chk-label"><input type="checkbox" id="pdfChkWt" checked> Weight Range (WT)</label>
+          <label class="pdf-chk-label"><input type="checkbox" id="pdfChkTag" checked> Special Tag</label>
+          <label class="pdf-chk-label"><input type="checkbox" id="pdfChkCat"> Product Category</label>
+          <label class="pdf-chk-label"><input type="checkbox" id="pdfChkAg"> AG Group</label>
+          <label class="pdf-chk-label"><input type="checkbox" id="pdfChkCluster"> Cluster</label>
+          <label class="pdf-chk-label"><input type="checkbox" id="pdfChkSize"> Size(s)</label>
+          <label class="pdf-chk-label"><input type="checkbox" id="pdfChkKarat"> Karat &amp; Prolif</label>
+        </div>
+      </div>
+
+      <div class="export-modal-footer">
+        <button class="btn-secondary" onclick="closeExportModal()">Cancel</button>
+        <button class="btn-primary-action" id="pdfExportActionBtn" onclick="exportSelectedPDF()">📄 Generate Visual PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Strict Domain Security Guardrail
+    (function() {
+      const allowedDomain = "sravanarun.github.io";
+      const isLocalHost = window.location.hostname === "localhost" || 
+                          window.location.hostname === "127.0.0.1" || 
+                          window.location.protocol === "file:";
+
+      if (window.location.hostname !== allowedDomain && !isLocalHost) {
+        document.body.innerHTML = `
+          <div style="background:#090e1a; color:#ef4444; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:sans-serif; text-align:center; padding:20px;">
+            <h2 style="margin-bottom:8px; font-size:1.6rem;">Access Denied</h2>
+            <p style="color:#94a3b8; font-size:0.95rem;">Unauthorized mirror or environment detected. Execution halted.</p>
+          </div>`;
+        throw new Error("Execution prohibited on unauthorized host.");
+      }
+    })();
+
+    let rawData = [];
+    let filteredGroups = [];
+    let selectedVariantsMap = new Map();
+    let currentIdx = 0;
+    let isLightboxOpen = false;
+
+    const filterFields = {
+      tag: { col: '_specialTagFilter', selected: new Set(), name: 'Tags' },
+      design: { col: '_design', selected: new Set(), name: 'Designs' },
+      cat: { col: '_cat', selected: new Set(), name: 'Categories' },
+      cluster: { col: '_cluster', selected: new Set(), name: 'Clusters' },
+      ag: { col: '_ag', selected: new Set(), name: 'AGs' },
+      size: { col: '_size', selected: new Set(), name: 'Sizes' },
+      karat: { col: '_karat', selected: new Set(), name: 'Karats' },
+      prolif: { col: '_prolif', selected: new Set(), name: 'Prolifs' }
+    };
+
+    window.addEventListener('click', (e) => {
+      if (!e.target.closest('.filter-box')) document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
+    });
+
+    function toggleDropdown(key) {
+      const menu = document.getElementById(`menu-${key}`);
+      const isShown = menu.classList.contains('show');
+      document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
+      if (!isShown) menu.classList.add('show');
+    }
+
+    function handleFileSelect() {
+      const fileInput = document.getElementById('fileInput');
+      const errBox = document.getElementById('authErr');
+      const loadBox = document.getElementById('authLoading');
+      const btn = document.getElementById('unlockBtn');
+      
+      if (!fileInput.files.length) {
+        errBox.innerText = "Please select an Excel file first.";
+        errBox.style.display = 'block';
+        return;
+      }
+      
+      errBox.style.display = 'none';
+      loadBox.style.display = 'block';
+      btn.disabled = true;
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+      
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, {type: 'array'});
+          const firstSheet = workbook.SheetNames[0];
+          const parsedRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
+          processRawData(parsedRows);
+        } catch (err) {
+          console.error(err);
+          errBox.innerText = "Error parsing file. Make sure it's a valid Excel file.";
+          errBox.style.display = 'block';
+          loadBox.style.display = 'none';
+          btn.disabled = false;
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function processRawData(parsedRows) {
+      rawData = [];
+      parsedRows.forEach(r => {
+        const variant = r['Item Code'] || r['Variant Code'] || r['SKU'] || r['Variant'];
+        if (!variant) return;
+
+        const vStr = String(variant).trim();
+        r._variant = vStr;
+        r._design = vStr.length >= 9 ? vStr.slice(2, 9).toUpperCase() : vStr.toUpperCase();
+        r._cat = String(r['Product Category'] || r['Category'] || '').trim();
+        r._cluster = String(r['Cluster'] || '').trim();
+        r._ag = String(r['AG'] || r['AG Group'] || '').trim();
+        r._size = String(r['size'] || r['Size'] || '').trim();
+        r._karat = String(r['Karat'] || '').trim();
+        r._prolif = String(r['Prolif'] || '').trim();
+        r._wt = parseFloat(r['Gross Weight'] || r['WT'] || 0) || 0;
+        
+        const rawTag = String(r['Special tag'] || '').trim();
+        r._specialTag = rawTag;
+        r._specialTagFilter = rawTag ? rawTag : 'None';
+
+        rawData.push(r);
+      });
+
+      document.getElementById('authOverlay').style.display = 'none';
+      applyFilters();
+    }
+
+    function getTagStyle(tag) {
+      const norm = tag.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (norm.includes('bestdeal')) return 'background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: #451a03; border: 1px solid #d97706; box-shadow: 0 4px 10px rgba(245, 158, 11, 0.4);';
+      if (norm.includes('mia')) return 'background: linear-gradient(135deg, #ec4899 0%, #be185d 100%); color: #fff; border: 1px solid #9d174d; box-shadow: 0 4px 10px rgba(236, 72, 153, 0.4);';
+      if (norm.includes('offer')) return 'background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); color: #fff; border: 1px solid #991b1b; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);';
+      if (norm.includes('new')) return 'background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; border: 1px solid #047857; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);';
+      
+      const colors = [
+        'background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: #fff; border: 1px solid #5b21b6;',
+        'background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: #fff; border: 1px solid #1e40af;',
+        'background: linear-gradient(135deg, #f97316 0%, #c2410c 100%); color: #fff; border: 1px solid #9a3412;',
+        'background: linear-gradient(135deg, #14b8a6 0%, #0f766e 100%); color: #fff; border: 1px solid #0f766e;'
+      ];
+      let hash = 0;
+      for (let i = 0; i < norm.length; i++) hash = norm.charCodeAt(i) + ((hash << 5) - hash);
+      const index = Math.abs(hash) % colors.length;
+      return colors[index] + ' box-shadow: 0 4px 10px rgba(0,0,0,0.3);';
+    }
+
+    function handleUniversalSearch() { applyFilters(); }
+
+    function getContextualRows(excludeKey = null) {
+      const wtOp = document.getElementById('wtOp').value;
+      const wt1 = parseFloat(document.getElementById('wtVal1').value);
+      const wt2 = parseFloat(document.getElementById('wtVal2').value);
+      const rawInput = (document.getElementById('skuSearchInput')?.value || '').trim();
+
+      const textTokens = []; const exactWeightTokens = [];
+      if (rawInput.length > 0) {
+        rawInput.toLowerCase().split(/\s+/).filter(Boolean).forEach(tok => {
+          if (/^[0-9]+(\.[0-9]+)?$/.test(tok)) exactWeightTokens.push(tok);
+          else textTokens.push(tok);
+        });
+      }
+
+      return rawData.filter(r => {
+        if (textTokens.length > 0) {
+          const searchableText = `${r._variant} ${r._design} ${r._cat} ${r._cluster} ${r._ag} ${r._karat}K ${r._size} ${r._specialTag}`.toLowerCase();
+          if (!textTokens.every(term => searchableText.includes(term))) return false;
+        }
+
+        if (exactWeightTokens.length > 0) {
+          const wStr = r._wt.toFixed(3); const wRawStr = String(r._wt);
+          if (!exactWeightTokens.every(tok => parseFloat(tok).toFixed(3) === wStr || wRawStr === tok)) return false;
+        }
+
+        for (const key of Object.keys(filterFields)) {
+          if (key === excludeKey) continue;
+          const sel = filterFields[key].selected;
+          if (sel.size > 0 && !sel.has(String(r[filterFields[key].col] || '(Blank)').trim())) return false;
+        }
+
+        if (wtOp !== 'any' && !isNaN(wt1)) {
+          const w = r._wt;
+          if (wtOp === 'eq' && Math.abs(w - wt1) > 0.0001) return false;
+          if (wtOp === 'gt' && w <= wt1) return false;
+          if (wtOp === 'gte' && w < wt1) return false;
+          if (wtOp === 'lt' && w >= wt1) return false;
+          if (wtOp === 'lte' && w > wt1) return false;
+          if (wtOp === 'between' && (!isNaN(wt2) && (w < Math.min(wt1, wt2) || w > Math.max(wt1, wt2)))) return false;
+        }
+        return true;
+      });
+    }
+
+    function refreshDropdownMenus() {
+      Object.keys(filterFields).forEach(key => {
+        const eligibleRows = getContextualRows(key);
+        const colField = filterFields[key].col;
+        const counts = {};
+        eligibleRows.forEach(r => {
+          const val = String(r[colField] || '(Blank)').trim();
+          counts[val] = (counts[val] || 0) + 1;
+        });
+
+        filterFields[key].selected.forEach(selVal => { if (!counts[selVal]) counts[selVal] = 0; });
+
+        const listContainer = document.getElementById(`list-${key}`);
+        const currentSearch = (document.querySelector(`#menu-${key} .dropdown-search`)?.value || '').toLowerCase();
+        listContainer.innerHTML = '';
+
+        const allAvailableKeys = Object.keys(counts).sort();
+        let checkedCount = 0;
+
+        allAvailableKeys.forEach(val => {
+          const isChecked = filterFields[key].selected.has(val);
+          if (isChecked) checkedCount++;
+          const item = document.createElement('label');
+          item.className = 'dropdown-item';
+          if (currentSearch && !val.toLowerCase().includes(currentSearch)) item.style.display = 'none';
+          item.innerHTML = `<input type="checkbox" value="${val}" ${isChecked ? 'checked' : ''} onchange="handleCheckboxChange('${key}', '${val}', this.checked)"><span>${val} <small style="color:var(--text-muted)">(${counts[val]})</small></span>`;
+          listContainer.appendChild(item);
+        });
+
+        const selectAllChk = document.getElementById(`chk-all-${key}`);
+        const selectAllLbl = document.getElementById(`lbl-all-${key}`);
+        if (selectAllChk) {
+          selectAllChk.checked = (checkedCount === allAvailableKeys.length && allAvailableKeys.length > 0);
+          selectAllChk.indeterminate = (checkedCount > 0 && checkedCount < allAvailableKeys.length);
+        }
+        if (selectAllLbl) selectAllLbl.innerText = `${checkedCount} / ${allAvailableKeys.length}`;
+        updateDropdownBtnLabel(key);
+      });
+    }
+
+    function toggleSelectAllDropdown(key) {
+      const eligibleRows = getContextualRows(key);
+      const allVals = Array.from(new Set(eligibleRows.map(r => String(r[filterFields[key].col] || '(Blank)').trim())));
+      const isAllCurrentlySelected = allVals.length > 0 && allVals.every(v => filterFields[key].selected.has(v));
+      if (isAllCurrentlySelected) filterFields[key].selected.clear();
+      else allVals.forEach(v => filterFields[key].selected.add(v));
+      applyFilters();
+    }
+
+    function filterChecklist(key, search) {
+      const s = search.toLowerCase();
+      document.getElementById(`list-${key}`).querySelectorAll('.dropdown-item').forEach(lbl => {
+        lbl.style.display = lbl.innerText.toLowerCase().includes(s) ? 'flex' : 'none';
+      });
+    }
+
+    function handleCheckboxChange(key, val, isChecked) {
+      if (isChecked) filterFields[key].selected.add(val);
+      else filterFields[key].selected.delete(val);
+      applyFilters();
+    }
+
+    function updateDropdownBtnLabel(key) {
+      const count = filterFields[key].selected.size;
+      document.querySelector(`#fb-${key} .dropdown-btn`).innerText = count === 0 ? `All ${filterFields[key].name}` : `${count} Selected`;
+    }
+
+    function handleWtOpChange() {
+      const op = document.getElementById('wtOp').value;
+      document.getElementById('wtVal1').style.display = op === 'any' ? 'none' : 'inline-block';
+      document.getElementById('wtVal2').style.display = op === 'between' ? 'inline-block' : 'none';
+      document.getElementById('wtBetweenSpan').style.display = op === 'between' ? 'inline-block' : 'none';
+      applyFilters();
+    }
+
+    function resetAllFilters() {
+      Object.keys(filterFields).forEach(key => filterFields[key].selected.clear());
+      document.getElementById('skuSearchInput').value = '';
+      document.getElementById('wtOp').value = 'any';
+      document.getElementById('wtVal1').value = '';
+      document.getElementById('wtVal2').value = '';
+      document.querySelectorAll('.dropdown-search').forEach(input => input.value = '');
+      document.getElementById('wtVal1').style.display = 'none';
+      document.getElementById('wtVal2').style.display = 'none';
+      document.getElementById('wtBetweenSpan').style.display = 'none';
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const rows = getContextualRows(null);
+      const groupMap = new Map();
+      rows.forEach(r => {
+        if (!groupMap.has(r._variant)) groupMap.set(r._variant, { variant: r._variant, design: r._design, rows: [] });
+        groupMap.get(r._variant).rows.push(r);
+      });
+      filteredGroups = Array.from(groupMap.values());
+      currentIdx = 0;
+      refreshDropdownMenus();
+      updateUI(rows.length);
+    }
+
+    function updateUI(totalMatchedRows) {
+      document.getElementById('statVariantCount').innerText = filteredGroups.length;
+      document.getElementById('statMaxIdx').innerText = filteredGroups.length;
+      document.getElementById('exportCount').innerText = selectedVariantsMap.size;
+      document.getElementById('statSelectedCount').innerText = selectedVariantsMap.size;
+      document.getElementById('statTotalUnits').innerText = `(Total Units: ${(totalMatchedRows !== undefined) ? totalMatchedRows : filteredGroups.reduce((acc, g) => acc + g.rows.length, 0)})`;
+
+      if (filteredGroups.length === 0) return;
+      const cur = filteredGroups[currentIdx];
+      const firstRow = cur.rows[0];
+      
+      document.getElementById('statCurIdx').innerText = currentIdx + 1;
+
+      const tagDisp = document.getElementById('dispTag');
+      if (firstRow._specialTag) {
+        tagDisp.innerText = firstRow._specialTag;
+        tagDisp.style.cssText = getTagStyle(firstRow._specialTag) + " position: absolute; top: 12px; left: 12px; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; z-index: 10;";
+        tagDisp.style.display = 'block';
+      } else {
+        tagDisp.style.display = 'none';
+      }
+
+      const img = document.getElementById('itemImg');
+      img.style.opacity = '0'; img.style.display = 'block';
+      document.getElementById('imgFallback').style.display = 'none';
+      document.getElementById('imgLoader').style.display = 'flex';
+      img.dataset.retried = "0";
+      img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${(cur.design || '').trim().toUpperCase()}.jpg`;
+
+      if (window._imgPreloader) window._imgPreloader.src = '';
+      if (filteredGroups[currentIdx + 1]) {
+        window._imgPreloader = new Image();
+        window._imgPreloader.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${(filteredGroups[currentIdx + 1].design || '').trim().toUpperCase()}.jpg`;
+      }
+
+      document.getElementById('dispVariant').innerText = cur.variant;
+      document.getElementById('dispAG').innerText = firstRow._ag || 'N/A';
+      document.getElementById('dispCat').innerText = firstRow._cat || '-';
+      document.getElementById('dispCluster').innerText = firstRow._cluster || '-';
+      document.getElementById('dispKaratProlif').innerText = `${firstRow._karat}K | P: ${firstRow._prolif}`;
+      document.getElementById('dispTotalQty').innerText = `${cur.rows.length} pcs`;
+      document.getElementById('dispSizesText').innerText = Array.from(new Set(cur.rows.map(r => r._size))).filter(Boolean).join(', ') || 'N/A';
+      const weights = cur.rows.map(r => r._wt);
+      document.getElementById('dispWtRangeText').innerText = `${Math.min(...weights).toFixed(3)} - ${Math.max(...weights).toFixed(3)} g`;
+
+      const isConf = selectedVariantsMap.has(cur.variant);
+      const confBtn = document.getElementById('confirmBtn');
+      confBtn.innerText = isConf ? "✖ Remove Selection" : "✔ Confirm";
+      confBtn.className = isConf ? "btn-action btn-confirmed" : "btn-action btn-confirm";
+      document.getElementById('dispSelectedBadge').style.display = isConf ? "inline-block" : "none";
+
+      renderDetailedTray(cur);
+      document.getElementById('prevBtn').disabled = currentIdx === 0;
+      document.getElementById('nextBtn').disabled = currentIdx === filteredGroups.length - 1;
+
+      if (isLightboxOpen) syncLightboxContent();
+    }
+
+    function renderDetailedTray(cur) {
+      const tbody = document.getElementById('trayTbody'); tbody.innerHTML = '';
+      document.getElementById('trayHeader').innerText = `Available Lots In-Store (${cur.rows.length} lots)`;
+      cur.rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td style="font-family:monospace; color:var(--primary);">${r['LOT Number'] || r['Lotno'] || '-'}</td><td>${r['Quantity'] || r['Actual Quantity'] || r['Qty'] || 1}</td><td><b>${r._wt.toFixed(3)}</b></td><td>${r._size}</td><td>₹${Number(r['Final Price - Pre Tax Value'] || r['Val'] || 0).toLocaleString('en-IN')}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function handleImageSuccess() { document.getElementById('imgLoader').style.display = 'none'; document.getElementById('itemImg').style.opacity = '1'; }
+    function handleImageError() {
+      const img = document.getElementById('itemImg');
+      const dCode = (filteredGroups[currentIdx]?.design || '').trim().toUpperCase();
+      if (img.dataset.retried === "0") {
+        img.dataset.retried = "1"; img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.JPG`;
+        return;
+      }
+      document.getElementById('imgLoader').style.display = 'none'; img.style.display = 'none';
+      const fallback = document.getElementById('imgFallback'); fallback.style.display = 'flex';
+      fallback.style.flexDirection = 'column'; fallback.style.alignItems = 'center'; fallback.style.justifyContent = 'center';
+      fallback.innerHTML = `<div style="font-size: 2.2rem; margin-bottom: 6px;">🖼️</div><div style="font-weight: 700; color: #334155;">No Catalog Image Found</div><div style="font-size: 0.72rem; color: #94a3b8; margin-top: 4px;">Design: ${dCode || 'N/A'}</div>`;
+    }
+
+    function openLightbox() { if (filteredGroups.length === 0) return; isLightboxOpen = true; document.getElementById('lightboxModal').classList.add('active'); syncLightboxContent(); }
+    function closeLightbox() { isLightboxOpen = false; document.getElementById('lightboxModal').classList.remove('active'); }
+    function handleLightboxBackdropClick(e) { if (e.target.id === 'lightboxModal') closeLightbox(); }
+
+    function syncLightboxContent() {
+      if (!isLightboxOpen || filteredGroups.length === 0) return;
+      const curGroup = filteredGroups[currentIdx];
+      const dCode = (curGroup.design || '').trim().toUpperCase();
+      const firstRow = curGroup.rows[0];
+
+      document.getElementById('modalDesignBadge').innerText = dCode;
+      document.getElementById('modalMetaTag').innerText = `${firstRow._cat} • ${firstRow._karat}K`;
+      const weights = curGroup.rows.map(r => r._wt);
+      document.getElementById('modalWtTag').innerText = (Math.min(...weights) === Math.max(...weights)) ? `WT: ${Math.min(...weights).toFixed(3)} g` : `WT: ${Math.min(...weights).toFixed(3)} - ${Math.max(...weights).toFixed(3)} g`;
+      document.getElementById('modalIdxTag').innerText = `${currentIdx + 1} of ${filteredGroups.length}`;
+
+      const modalTag = document.getElementById('modalTag');
+      if (firstRow._specialTag) {
+        modalTag.innerText = firstRow._specialTag;
+        modalTag.style.cssText = getTagStyle(firstRow._specialTag) + " position: absolute; top: 16px; left: 16px; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; z-index: 10;";
+        modalTag.style.display = 'block';
+      } else { modalTag.style.display = 'none'; }
+
+      const modalImg = document.getElementById('modalImg');
+      modalImg.style.opacity = '0'; modalImg.style.display = 'block';
+      document.getElementById('modalFallback').style.display = 'none'; document.getElementById('modalImgLoader').style.display = 'flex';
+      modalImg.dataset.retried = "0"; modalImg.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.jpg`;
+
+      const isConf = selectedVariantsMap.has(curGroup.variant);
+      document.getElementById('modalConfirmBtn').innerText = isConf ? "✖ Remove Selection" : "✔ Confirm Selection";
+      document.getElementById('modalConfirmBtn').className = isConf ? "btn-action btn-confirmed" : "btn-action btn-confirm";
+      document.getElementById('modalPrevBtn').disabled = (currentIdx === 0);
+      document.getElementById('modalNextBtn').disabled = (currentIdx === filteredGroups.length - 1);
+    }
+
+    function handleModalImgSuccess() { document.getElementById('modalImgLoader').style.display = 'none'; document.getElementById('modalImg').style.opacity = '1'; }
+    function handleModalImgError() {
+      const img = document.getElementById('modalImg'); const dCode = (filteredGroups[currentIdx]?.design || '').trim().toUpperCase();
+      if (img.dataset.retried === "0") {
+        img.dataset.retried = "1"; img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.JPG`; return;
+      }
+      document.getElementById('modalImgLoader').style.display = 'none'; img.style.display = 'none';
+      const fallback = document.getElementById('modalFallback'); fallback.style.display = 'flex';
+      fallback.style.flexDirection = 'column'; fallback.style.alignItems = 'center'; fallback.style.justifyContent = 'center';
+      fallback.innerHTML = `<div style="font-size: 3rem; margin-bottom: 6px;">🖼️</div><div style="font-weight: 700; color: #334155;">No Catalog Image Found</div><div style="font-size: 0.8rem; color: #94a3b8; margin-top: 4px;">Design: ${dCode || 'N/A'}</div>`;
+    }
+
+    let touchStartX = 0; let touchEndX = 0;
+    document.getElementById('lightboxBody').addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+    document.getElementById('lightboxBody').addEventListener('touchend', (e) => {
+      touchEndX = e.changedTouches[0].screenX;
+      if (touchEndX < touchStartX - 50) navigateVariant(1);
+      if (touchEndX > touchStartX + 50) navigateVariant(-1);
+    }, { passive: true });
+
+    function toggleConfirmCurrent() {
+      const cur = filteredGroups[currentIdx];
+      if (selectedVariantsMap.has(cur.variant)) selectedVariantsMap.delete(cur.variant);
+      else selectedVariantsMap.set(cur.variant, cur.rows);
+      updateUI();
+    }
+
+    function selectAllFilteredVariants() {
+      if (filteredGroups.length === 0) return;
+      filteredGroups.forEach(grp => { selectedVariantsMap.set(grp.variant, grp.rows); });
+      updateUI();
+    }
+
+    function unselectAllVariants() { if (selectedVariantsMap.size === 0) return; selectedVariantsMap.clear(); updateUI(); }
+    function navigateVariant(s) { const n = currentIdx + s; if (n >= 0 && n < filteredGroups.length) { currentIdx = n; updateUI(); } }
+
+    window.addEventListener('keydown', (e) => {
+      if (filteredGroups.length === 0 || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      if (e.key === 'ArrowRight') { e.preventDefault(); navigateVariant(1); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); navigateVariant(-1); }
+      else if (e.key === ' ' || e.code === 'Space') { e.preventDefault(); toggleConfirmCurrent(); }
+      else if (e.key === 'Escape' && isLightboxOpen) { closeLightbox(); }
+    });
+
+    function openExportModal() { if (selectedVariantsMap.size === 0) { alert("No variants confirmed yet."); return; } document.getElementById('exportModal').classList.add('active'); }
+    function closeExportModal() { document.getElementById('exportModal').classList.remove('active'); }
+
+    function exportSelectedExcel() {
+      closeExportModal();
+      const rows = [];
+      selectedVariantsMap.forEach(grp => grp.forEach(r => {
+        const c = { ...r };
+        delete c._variant; delete c._design; delete c._cat; delete c._cluster; 
+        delete c._ag; delete c._size; delete c._karat; delete c._prolif; 
+        delete c._wt; delete c._specialTag; delete c._specialTagFilter;
+        rows.push(c);
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows); const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Selected");
+      XLSX.writeFile(wb, `InStore_Selected_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+
+    /* BATCHED PDF GENERATION ENGINE (500px / 80% Quality Sweet Spot) */
+    async function exportSelectedPDF() {
+      const actionBtn = document.getElementById('pdfExportActionBtn');
+      actionBtn.disabled = true;
+
+      const incVariant = document.getElementById('pdfChkVariant').checked;
+      const incDesign = document.getElementById('pdfChkDesign').checked;
+      const incWt = document.getElementById('pdfChkWt').checked;
+      const incTag = document.getElementById('pdfChkTag').checked;
+      const incCat = document.getElementById('pdfChkCat').checked;
+      const incAg = document.getElementById('pdfChkAg').checked;
+      const incCluster = document.getElementById('pdfChkCluster').checked;
+      const incSize = document.getElementById('pdfChkSize').checked;
+      const incKarat = document.getElementById('pdfChkKarat').checked;
+
+      const uniqueVariants = Array.from(selectedVariantsMap.values());
+      const totalItems = uniqueVariants.length;
+      
+      // PHASE 1: BATCH FETCH
+      const BATCH_SIZE = 15;
+      const preloadedImages = [];
+
+      for (let i = 0; i < totalItems; i += BATCH_SIZE) {
+        actionBtn.innerText = `⏳ Fetching Images (${Math.min(i + BATCH_SIZE, totalItems)}/${totalItems})...`;
+        const batch = uniqueVariants.slice(i, i + BATCH_SIZE);
+        const batchPromises = batch.map(async (grp) => {
+          const dCode = (grp[0]._design || '').trim().toUpperCase();
+          const baseUrl = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}`;
+          try {
+            return await fetchImageAsBase64(`${baseUrl}.jpg`);
+          } catch (e1) {
+            try { return await fetchImageAsBase64(`${baseUrl}.JPG`); } 
+            catch (e2) { return null; }
+          }
+        });
+        const batchResults = await Promise.all(batchPromises);
+        preloadedImages.push(...batchResults);
+      }
+
+      // PHASE 2: BUILD PDF
+      actionBtn.innerText = "⏳ Assembling PDF Document...";
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      const cols = 2; const rowsPerPage = 2; const itemsPerPage = cols * rowsPerPage;
+      const cardWidth = 91; const cardHeight = 128;
+      const startX = 10; const startY = 14; const gapX = 8; const gapY = 10;
+      const imgSize = 80; const imgOffsetX = (cardWidth - imgSize) / 2;
+
+      let itemIndex = 0;
+      for (const grp of uniqueVariants) {
+        if (itemIndex > 0 && itemIndex % itemsPerPage === 0) pdf.addPage();
+        const pagePos = itemIndex % itemsPerPage;
+        const col = pagePos % cols; const row = Math.floor(pagePos / cols);
+        const x = startX + col * (cardWidth + gapX); const y = startY + row * (cardHeight + gapY);
+
+        pdf.setDrawColor(203, 213, 225); pdf.setLineWidth(0.4); pdf.setFillColor(255, 255, 255);
+        pdf.roundedRect(x, y, cardWidth, cardHeight, 3, 3, 'FD');
+
+        const firstRow = grp[0];
+        const base64Img = preloadedImages[itemIndex];
+        if (base64Img) {
+          pdf.addImage(base64Img, 'JPEG', x + imgOffsetX, y + 4, imgSize, imgSize);
+        } else {
+          pdf.setFillColor(248, 250, 252); pdf.rect(x + imgOffsetX, y + 4, imgSize, imgSize, 'F');
+          pdf.setFontSize(8); pdf.setTextColor(148, 163, 184);
+          pdf.text("Image Unavailable", x + cardWidth / 2, y + 44, { align: 'center' });
+        }
+
+        pdf.setDrawColor(241, 245, 249); pdf.line(x + 5, y + 86, x + cardWidth - 5, y + 86);
+        let currentTextY = y + 91;
+
+        if (incVariant) {
+          pdf.setFontSize(10); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(2, 132, 199); 
+          pdf.text(firstRow._variant, x + 6, currentTextY); currentTextY += 5.5;
+        }
+        if (incDesign) {
+          pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(15, 23, 42); 
+          pdf.text(`DSN: ${firstRow._design}`, x + 6, currentTextY); currentTextY += 5.5;
+        }
+
+        let col1Y = currentTextY;
+        if (incTag && firstRow._specialTag) {
+          pdf.setFontSize(8); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(234, 88, 12); 
+          pdf.text(`★ TAG: ${firstRow._specialTag.toUpperCase()}`, x + 6, col1Y); col1Y += 4.5;
+        }
+        
+        pdf.setFont('helvetica', 'normal'); pdf.setTextColor(51, 65, 85);
+        if (incCat) { pdf.text(`Cat: ${firstRow._cat || '-'}`, x + 6, col1Y); col1Y += 4.5; }
+        if (incAg) { pdf.text(`AG: ${(firstRow._ag || '-').substring(0, 22)}`, x + 6, col1Y); col1Y += 4.5; }
+        if (incCluster) { pdf.text(`Cluster: ${firstRow._cluster || '-'}`, x + 6, col1Y); col1Y += 4.5; }
+        if (incSize) { pdf.text(`Size: ${Array.from(new Set(grp.map(r => r._size))).filter(Boolean).join(', ') || '-'}`, x + 6, col1Y); col1Y += 4.5; }
+
+        let col2Y = currentTextY; const col2X = x + 48;
+        if (incWt) {
+          const weights = grp.map(r => r._wt);
+          const wtStr = Math.min(...weights) === Math.max(...weights) ? `${Math.min(...weights).toFixed(3)}g` : `${Math.min(...weights).toFixed(3)}-${Math.max(...weights).toFixed(3)}g`;
+          pdf.setFont('helvetica', 'bold'); pdf.text(`WT: ${wtStr}`, col2X, col2Y); pdf.setFont('helvetica', 'normal'); col2Y += 4.5;
+        }
+        if (incKarat) { pdf.text(`K: ${firstRow._karat || '-'}K | P: ${firstRow._prolif || '-'}`, col2X, col2Y); col2Y += 4.5; }
+
+        itemIndex++;
+      }
+
+      pdf.save(`InStore_Catalogue_${new Date().toISOString().slice(0,10)}.pdf`);
+      actionBtn.disabled = false; actionBtn.innerText = "📄 Generate Visual PDF";
+      closeExportModal();
+    }
+
+    function fetchImageAsBase64(url, timeoutMs = 8000) {
+      return new Promise((resolve, reject) => {
+        const img = new Image(); let timeoutId; img.crossOrigin = 'Anonymous';
+        img.onload = () => {
+          clearTimeout(timeoutId);
+          try {
+            const canvas = document.createElement('canvas');
+            const MAX_DIM = 500; // Optimal 500px resolution
+            let w = img.naturalWidth || 500; let h = img.naturalHeight || 500;
+            if (w > MAX_DIM || h > MAX_DIM) {
+              const ratio = Math.min(MAX_DIM / w, MAX_DIM / h); w *= ratio; h *= ratio;
+            }
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', 0.80)); // 80% Quality
+          } catch (e) { reject(e); }
+        };
+        img.onerror = () => { clearTimeout(timeoutId); reject(new Error('Image fetch failed')); };
+        timeoutId = setTimeout(() => { img.src = ''; reject(new Error('Image fetch timeout')); }, timeoutMs);
+        img.src = url;
+      });
+    }
+  </script>
+</body>
+</html>
