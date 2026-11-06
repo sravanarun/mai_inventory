@@ -11,207 +11,211 @@
 
   <style>
     /* ---------------------------------------------------
-       LIGHT GREEN THEME (Mint, Emerald & White Palette)
+       PREMIUM DARK SLATE THEME (High Readability)
        --------------------------------------------------- */
     :root {
-      --bg: #ecfdf5;             /* Very Light Mint Background */
-      --card-bg: #ffffff;        /* Crisp White Cards */
-      --panel-bg: #d1fae5;       /* Soft Light Emerald Panels */
-      --border: #6ee7b7;         /* Bright Mint Border */
-      --primary: #059669;        /* Strong Emerald Text/Icons */
-      --primary-hover: #047857;  /* Darker Emerald Hover */
-      --accent: #d97706;         /* Amber accent for MC/Tags */
-      --text: #064e3b;           /* Deep Forest Green for Reading */
-      --text-muted: #047857;     /* Medium Emerald for Meta-text */
+      --bg: #0b1121;             /* Deep Slate Background */
+      --card-bg: #151e32;        /* Dark Blue-Grey Cards */
+      --panel-bg: #1e293b;       /* Slightly Lighter Panel */
+      --border: #334155;         /* Soft Border */
+      --primary: #10b981;        /* Emerald Green Highlight */
+      --primary-hover: #059669;  /* Darker Emerald */
+      --accent: #fbbf24;         /* Amber/Gold Accent */
+      --text: #f8fafc;           /* Bright White Text */
+      --text-muted: #94a3b8;     /* Muted Grey Text for meta */
     }
 
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
     body { background: var(--bg); color: var(--text); margin: 0; padding: 12px 14px 80px 14px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
 
-    /* Clean Auto-Fetch Loading Overlay */
+    /* Loading Overlay */
     #loadingOverlay {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(209, 250, 229, 0.95); z-index: 99999; display: flex;
+      background: rgba(11, 17, 33, 0.98); z-index: 99999; display: flex;
       align-items: center; justify-content: center; flex-direction: column;
     }
     .auth-card {
       background: var(--card-bg); border: 1px solid var(--border); padding: 26px;
       border-radius: 12px; max-width: 360px; width: 90%; text-align: center;
-      box-shadow: 0 10px 30px rgba(4, 120, 87, 0.15);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
     }
     .auth-card h3 { color: var(--primary); margin: 0 0 8px 0; }
     .auth-card p { color: var(--text-muted); font-size: 0.85rem; margin: 0; }
-    .main-spinner { width: 45px; height: 45px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 20px auto; }
+    .main-spinner { width: 45px; height: 45px; border: 4px solid var(--panel-bg); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 20px auto; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* Header & Panel */
     .header { width: 100%; max-width: 1250px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
     .header h2 { margin: 0; font-size: 1.35rem; color: var(--primary); }
-    .control-panel { width: 100%; max-width: 1250px; background: var(--panel-bg); padding: 12px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 4px 6px rgba(4, 120, 87, 0.05); }
+    .control-panel { width: 100%; max-width: 1250px; background: var(--panel-bg); padding: 12px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; }
     
     .filter-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 6px; width: 100%; }
     .filter-box { display: flex; flex-direction: column; gap: 3px; position: relative; }
     .filter-label { font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
 
     /* Search & Wide Boxes */
-    .search-input { background: var(--card-bg); border: 1px solid var(--border); color: var(--text); padding: 7px 10px; border-radius: 6px; font-size: 0.78rem; outline: none; width: 100%; font-weight: 500; }
-    .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2); }
+    .search-input { background: var(--bg); border: 1px solid var(--border); color: #fff; padding: 7px 10px; border-radius: 6px; font-size: 0.78rem; outline: none; width: 100%; }
+    .search-input:focus { border-color: var(--primary); }
     .filter-box-wide { grid-column: span 2; min-width: 250px; }
 
-    .dropdown-btn { background: var(--card-bg); color: var(--text); border: 1px solid var(--border); padding: 7px 10px; border-radius: 6px; font-size: 0.78rem; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+    .dropdown-btn { background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 7px 10px; border-radius: 6px; font-size: 0.78rem; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .dropdown-btn:hover { border-color: var(--primary); }
     .dropdown-btn::after { content: "▾"; font-size: 0.75rem; margin-left: 6px; color: var(--text-muted); flex-shrink: 0; }
     
-    .dropdown-menu { display: none; position: absolute; top: calc(100% + 4px); left: 0; min-width: 220px; max-height: 310px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; z-index: 1000; flex-direction: column; padding: 8px; box-shadow: 0 10px 30px rgba(4, 120, 87, 0.15); }
+    .dropdown-menu { display: none; position: absolute; top: calc(100% + 4px); left: 0; min-width: 220px; max-height: 310px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; z-index: 1000; flex-direction: column; padding: 8px; box-shadow: 0 15px 30px rgba(0,0,0,0.8); }
     .dropdown-menu.show { display: flex; }
     .dropdown-menu-wide { min-width: 440px; max-width: 520px; max-height: 380px; }
 
-    .dropdown-toolbar { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; border-bottom: 1px solid var(--bg); padding-bottom: 6px; }
+    .dropdown-toolbar { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
     .select-all-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem; color: var(--primary); cursor: pointer; padding: 2px 4px; }
-    .select-all-row:hover { background: var(--bg); border-radius: 4px; }
+    .select-all-row:hover { background: var(--panel-bg); border-radius: 4px; }
     .select-all-label { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; font-weight: 600; }
 
-    .dropdown-search { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px 8px; border-radius: 4px; font-size: 0.76rem; outline: none; }
+    .dropdown-search { background: var(--card-bg); border: 1px solid var(--border); color: #fff; padding: 6px 8px; border-radius: 4px; font-size: 0.76rem; outline: none; }
     .dropdown-search:focus { border-color: var(--primary); }
     .dropdown-list { overflow-y: auto; display: flex; flex-direction: column; gap: 3px; max-height: 180px; }
     .dropdown-menu-wide .dropdown-list { max-height: 260px; }
 
-    .dropdown-item { display: flex; align-items: flex-start; gap: 6px; font-size: 0.76rem; cursor: pointer; padding: 5px 6px; border-radius: 4px; word-break: break-all; color: var(--text); }
-    .dropdown-item:hover { background: var(--bg); }
+    .dropdown-item { display: flex; align-items: flex-start; gap: 6px; font-size: 0.76rem; cursor: pointer; padding: 5px 6px; border-radius: 4px; word-break: break-all; }
+    .dropdown-item:hover { background: var(--panel-bg); }
     .dropdown-item input { margin-top: 2px; flex-shrink: 0; }
 
     .weight-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-    .weight-row select, .weight-row input { background: var(--card-bg); border: 1px solid var(--border); color: var(--text); padding: 6px 8px; border-radius: 6px; font-size: 0.78rem; outline: none; font-weight: 500; }
-    .weight-row select { width: 110px; }
-    .weight-row input { width: 85px; }
+    .weight-row select, .weight-row input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px 8px; border-radius: 6px; font-size: 0.78rem; outline: none; }
+    .weight-row select { width: 125px; }
+    .weight-row input { width: 75px; }
 
-    .stats-bar { width: 100%; max-width: 1250px; display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 10px; font-size: 0.78rem; color: var(--text-muted); flex-wrap: wrap; gap: 8px; box-shadow: 0 4px 6px rgba(4, 120, 87, 0.05); }
-    .stats-bar b { color: var(--primary); font-size: 0.85rem; }
+    .stats-bar { width: 100%; max-width: 1250px; display: flex; justify-content: space-between; align-items: center; background: var(--panel-bg); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 10px; font-size: 0.78rem; color: var(--text-muted); flex-wrap: wrap; gap: 8px; }
+    .stats-bar b { color: var(--primary); }
     .bulk-btn-group { display: flex; gap: 6px; align-items: center; }
-    .btn-bulk { background: var(--panel-bg); border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 4px; font-size: 0.72rem; cursor: pointer; font-weight: 600; }
-    .btn-bulk:hover { border-color: var(--primary); background: var(--primary); color: #fff; }
-    .btn-bulk-danger:hover { border-color: #ef4444; background: #ef4444; color: #fff; }
+    .btn-bulk { background: var(--card-bg); border: 1px solid var(--border); color: var(--text); padding: 4px 8px; border-radius: 4px; font-size: 0.72rem; cursor: pointer; font-weight: 600; }
+    .btn-bulk:hover { border-color: var(--primary); color: #fff; }
+    .btn-bulk-danger:hover { border-color: #ef4444; color: #ef4444; }
 
     /* Responsive Main Card */
-    .main-card { width: 100%; max-width: 1250px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 10px 20px rgba(4, 120, 87, 0.05); }
+    .main-card { width: 100%; max-width: 1250px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
     .card-top { display: flex; gap: 20px; align-items: flex-start; }
 
-    /* Standard Image Viewer */
+    /* EXACT QUALITY Image Viewer (scale-down prevents upscaling pixelation) */
     .image-viewer { 
-      width: 500px; height: 500px; min-width: 500px; background: #f8fafc; 
+      width: 500px; height: 500px; min-width: 500px; background: #0f172a; 
       border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; 
-      border: 1px solid #e2e8f0; position: relative; cursor: zoom-in;
+      border: 1px solid var(--border); position: relative; cursor: zoom-in;
     }
-    .image-viewer img { width: 100%; height: 100%; object-fit: contain; }
+    .image-viewer img { 
+      width: 100%; height: 100%; 
+      object-fit: scale-down; /* This is the fix. Renders at exact 100% size max */
+    }
     
     .zoom-hint {
-      position: absolute; bottom: 10px; right: 10px; background: rgba(255, 255, 255, 0.85); color: var(--text);
+      position: absolute; bottom: 10px; right: 10px; background: rgba(11, 17, 33, 0.75); color: #fff;
       padding: 4px 8px; border-radius: 4px; font-size: 0.68rem; pointer-events: none; backdrop-filter: blur(4px);
-      border: 1px solid var(--border); font-weight: 600;
+      border: 1px solid var(--border); opacity: 0.85;
     }
-    .img-loader { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--primary); font-size: 0.85rem; font-weight: 700; background: #f8fafc; width: 100%; height: 100%; z-index: 5; }
+    .img-loader { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--primary); font-size: 0.85rem; font-weight: 700; background: #0f172a; width: 100%; height: 100%; z-index: 5; }
     .img-fallback { color: #64748b; font-size: 0.85rem; text-align: center; display: none; padding: 20px; z-index: 6; }
 
-    /* Elegant Special Tag styling */
     .special-tag-badge {
       position: absolute; top: 12px; left: 12px; 
-      background: #fff; color: var(--accent); 
-      border: 1px solid var(--accent);
-      padding: 4px 12px; border-radius: 20px; 
-      font-size: 0.75rem; font-weight: 800; 
+      background: var(--bg); color: var(--accent); 
+      border: 1px solid var(--border);
+      padding: 4px 12px; border-radius: 6px; 
+      font-size: 0.75rem; font-weight: 700; 
       text-transform: uppercase; z-index: 10;
-      box-shadow: 0 4px 10px rgba(217, 119, 6, 0.15);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
 
     .variant-details { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; width: 100%; }
     .sku-badge { font-size: 1.35rem; font-weight: 800; color: var(--primary); font-family: monospace; }
     .ag-tag { font-size: 0.75rem; color: var(--text-muted); word-break: break-all; margin-top: 2px; }
-    .pill-selected { background: #10b981; color: #fff; border: 1px solid #059669; padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; box-shadow: 0 2px 5px rgba(16, 185, 129, 0.3); }
+    .pill-selected { background: #064e3b; color: #34d399; border: 1px solid #059669; padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; }
 
     .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-    .metric-box { background: var(--bg); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border); }
-    .metric-lbl { font-size: 0.62rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; }
-    .metric-val { font-size: 0.9rem; font-weight: 800; color: var(--text); margin-top: 2px; }
+    .metric-box { background: var(--bg); padding: 7px 9px; border-radius: 6px; border: 1px solid var(--border); }
+    .metric-lbl { font-size: 0.62rem; color: var(--text-muted); text-transform: uppercase; }
+    .metric-val { font-size: 0.9rem; font-weight: 700; color: #fff; margin-top: 2px; }
 
-    .section-title { font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+    .section-title { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
     
-    .detailed-tray { background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 10px; box-shadow: 0 4px 6px rgba(4, 120, 87, 0.04); }
+    .detailed-tray { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
     .tray-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: left; }
-    .tray-table th { color: var(--text-muted); padding: 6px; border-bottom: 2px solid var(--bg); font-size: 0.68rem; text-transform: uppercase; }
-    .tray-table td { padding: 6px; border-bottom: 1px solid var(--bg); color: var(--text); }
+    .tray-table th { color: var(--text-muted); padding: 5px 6px; border-bottom: 1px solid var(--border); font-size: 0.68rem; text-transform: uppercase; }
+    .tray-table td { padding: 5px 6px; border-bottom: 1px solid var(--card-bg); }
 
     /* Sticky Bottom Bar */
     .actions-bar { 
       position: sticky; bottom: 0; left: 0; width: 100%; max-width: 1250px; 
-      background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); 
+      background: rgba(11, 17, 33, 0.95); backdrop-filter: blur(8px); 
       border: 1px solid var(--border); border-radius: 10px; 
       padding: 10px 14px; display: flex; justify-content: space-between; 
-      align-items: center; margin-top: 10px; box-shadow: 0 -10px 30px rgba(4, 120, 87, 0.1); z-index: 500; 
+      align-items: center; margin-top: 10px; box-shadow: 0 -8px 25px rgba(0,0,0,0.8); z-index: 500; 
     }
-    .btn-nav { background: var(--bg); color: var(--primary); border: 1px solid var(--border); padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 0.85rem; }
-    .btn-nav:hover { background: var(--panel-bg); }
-    .btn-nav:disabled { opacity: 0.4; cursor: not-allowed; }
-    
+    .btn-nav { background: var(--border); color: #fff; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 0.85rem; }
+    .btn-nav:hover { background: #475569; }
+    .btn-nav:disabled { opacity: 0.3; cursor: not-allowed; }
     .btn-decision { display: flex; gap: 8px; }
     .btn-action { padding: 10px 18px; border-radius: 6px; font-size: 0.85rem; font-weight: 700; cursor: pointer; border: none; }
-    .btn-skip { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
-    .btn-skip:hover { background: #e2e8f0; }
-    .btn-confirm { background: #10b981; color: white; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2); }
-    .btn-confirm:hover { background: #059669; }
+    .btn-skip { background: #334155; color: white; }
+    .btn-skip:hover { background: #475569; }
+    .btn-confirm { background: var(--primary); color: white; }
+    .btn-confirm:hover { background: var(--primary-hover); }
     .btn-confirmed { background: #ef4444; color: white; }
     
-    .export-btn { background: #10b981; color: #fff; border: none; padding: 7px 14px; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 0.78rem; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2); }
-    .export-btn:hover { background: #059669; }
+    .export-btn { background: var(--primary); color: #fff; border: none; padding: 7px 12px; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 0.78rem; }
 
     /* Lightbox Modal */
     .lightbox-modal {
       display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(6, 78, 59, 0.85); backdrop-filter: blur(8px);
+      background: rgba(11, 17, 33, 0.96); backdrop-filter: blur(12px);
       z-index: 10000; flex-direction: column; align-items: center; justify-content: center; padding: 16px; user-select: none;
     }
     .lightbox-modal.active { display: flex; }
     .lightbox-header { width: 100%; max-width: 900px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 10px; flex-wrap: wrap; }
     .lightbox-meta { display: flex; align-items: center; gap: 8px; color: #fff; flex-wrap: wrap; }
-    .lightbox-badge { font-size: 1.3rem; font-weight: 800; color: var(--primary); font-family: monospace; background: #fff; padding: 2px 8px; border-radius: 4px; }
-    .lightbox-tag { font-size: 0.8rem; color: #fff; background: rgba(0,0,0,0.4); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); }
-    .lightbox-tag-wt { font-size: 0.82rem; font-weight: 700; color: #fff; background: var(--primary); border-color: var(--primary-hover); }
-    .lightbox-close-btn { background: #fff; color: var(--text); border: none; width: 38px; height: 38px; border-radius: 50%; font-size: 1.2rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-    .lightbox-close-btn:hover { background: #ef4444; color: #fff; }
-    .lightbox-body { width: 100%; max-width: 900px; height: calc(100vh - 160px); max-height: 800px; background: #f8fafc; border-radius: 14px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; border: 4px solid #fff; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
-    .lightbox-body img { width: 100%; height: 100%; object-fit: contain; }
-    .lightbox-actions-bar { margin-top: 12px; width: 100%; max-width: 900px; display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.95); border-radius: 10px; padding: 10px 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+    .lightbox-badge { font-size: 1.3rem; font-weight: 800; color: var(--primary); font-family: monospace; }
+    .lightbox-tag { font-size: 0.8rem; color: var(--text-muted); background: var(--card-bg); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); }
+    .lightbox-tag-wt { font-size: 0.82rem; font-weight: 700; color: var(--text); background: var(--primary-hover); border-color: var(--primary); }
+    .lightbox-close-btn { background: var(--card-bg); color: #fff; border: 1px solid var(--border); width: 38px; height: 38px; border-radius: 50%; font-size: 1.2rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .lightbox-close-btn:hover { background: #ef4444; border-color: #ef4444; }
+    .lightbox-body { width: 100%; max-width: 900px; height: calc(100vh - 160px); max-height: 800px; background: #0f172a; border-radius: 14px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; border: 2px solid var(--border); }
+    
+    .lightbox-body img { 
+      width: 100%; height: 100%; 
+      object-fit: scale-down; /* Exact native resolution up to max window bounds */
+    }
+    
+    .lightbox-actions-bar { margin-top: 12px; width: 100%; max-width: 900px; display: flex; justify-content: space-between; align-items: center; background: rgba(11, 17, 33, 0.95); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; backdrop-filter: blur(8px); }
 
     /* Download/Export Choice Modal */
     #exportModal {
       display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(6, 78, 59, 0.85); backdrop-filter: blur(8px);
+      background: rgba(11, 17, 33, 0.85); backdrop-filter: blur(8px);
       z-index: 20000; align-items: center; justify-content: center;
     }
     #exportModal.active { display: flex; }
     .export-card {
       background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
-      padding: 22px; width: 90%; max-width: 480px; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+      padding: 22px; width: 90%; max-width: 480px; box-shadow: 0 20px 40px rgba(0,0,0,0.8);
     }
     .export-card h3 { margin: 0 0 6px 0; color: var(--primary); font-size: 1.15rem; }
     .export-card p { font-size: 0.8rem; color: var(--text-muted); margin: 0 0 16px 0; }
     .export-options-grid { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
     .export-type-btn {
       display: flex; align-items: center; justify-content: space-between;
-      background: var(--bg); border: 1px solid var(--border); color: var(--text);
+      background: var(--bg); border: 1px solid var(--border); color: #fff;
       padding: 12px 14px; border-radius: 8px; cursor: pointer; text-align: left;
     }
-    .export-type-btn:hover { border-color: var(--primary); background: #fff; box-shadow: 0 4px 10px rgba(4, 120, 87, 0.1); }
+    .export-type-btn:hover { border-color: var(--primary); }
     .pdf-field-selector {
       background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
       padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;
     }
     .pdf-field-title { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
     .pdf-fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .pdf-chk-label { font-size: 0.76rem; color: var(--text); display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 500; }
+    .pdf-chk-label { font-size: 0.76rem; color: var(--text); display: flex; align-items: center; gap: 6px; cursor: pointer; }
     .export-modal-footer { display: flex; justify-content: flex-end; gap: 10px; }
-    .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600; }
-    .btn-secondary:hover { background: var(--panel-bg); }
-    .btn-primary-action { background: var(--primary); color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 700; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3); }
+    .btn-secondary { background: var(--border); color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600; }
+    .btn-primary-action { background: var(--primary); color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 700; }
 
     @media (max-width: 980px) {
       body { padding: 10px 10px 80px 10px; }
@@ -222,13 +226,13 @@
       .filter-box-wide { grid-column: span 2; min-width: 100%; }
       .dropdown-menu-wide { min-width: 90vw; max-width: 90vw; }
       .btn-nav, .btn-action { padding: 10px 14px; font-size: 0.82rem; }
-      .lightbox-body { height: calc(100vh - 200px); border-width: 2px; }
+      .lightbox-body { height: calc(100vh - 200px); }
     }
   </style>
 </head>
 <body>
 
-  <!-- Clean Auto-Fetch Loading Overlay -->
+  <!-- Loading Overlay -->
   <div id="loadingOverlay">
     <div class="auth-card">
       <h3>In-Store Catalog</h3>
@@ -394,14 +398,14 @@
       </div>
     </div>
 
-    <!-- Unified Numeric Filter: Weight, Value, and MC -->
+    <!-- Unified Numeric Filter -->
     <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--border);">
       <span class="filter-label" style="color: var(--primary);">Filter By:</span>
       <div class="weight-row">
         <select id="numMetric" onchange="applyFilters()">
           <option value="wt">Weight (g)</option>
           <option value="val">Value (₹)</option>
-          <option value="mc">Making Charges (₹)</option>
+          <option value="mc">MC (%)</option>
         </select>
         <select id="numOp" onchange="handleNumOpChange()">
           <option value="any">Any Value</option>
@@ -416,7 +420,7 @@
         <span id="numBetweenSpan" style="display:none; font-size:0.75rem; color:var(--text-muted); font-weight:700;">&amp;</span>
         <input type="number" id="numVal2" step="0.001" placeholder="Max" style="display:none;" oninput="applyFilters()">
       </div>
-      <button style="margin-left: auto; background: var(--primary); border: none; color: #fff; padding: 5px 10px; border-radius: 4px; font-size: 0.72rem; cursor: pointer; font-weight:600;" onclick="resetAllFilters()">Reset Filters</button>
+      <button style="margin-left: auto; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 4px; font-size: 0.72rem; cursor: pointer; font-weight:600;" onclick="resetAllFilters()">Reset Filters</button>
     </div>
   </div>
 
@@ -456,7 +460,6 @@
           <div class="metric-box"><div class="metric-lbl">Total Stock</div><div class="metric-val" id="dispTotalQty">0 pcs</div></div>
         </div>
 
-        <!-- Extended Info Row with Size, Weight, MC, and Value -->
         <div style="display:flex; gap:8px;">
           <div style="flex:1; background:var(--bg); padding:7px 9px; border-radius:6px; border:1px solid var(--border);">
             <div class="section-title">Sizes</div>
@@ -468,11 +471,11 @@
           </div>
           <div style="flex:1; background:var(--bg); padding:7px 9px; border-radius:6px; border:1px solid var(--border);">
             <div class="section-title">MC Range</div>
-            <div id="dispMcRangeText" style="font-weight:800; color:var(--accent); font-size:0.8rem;">-</div>
+            <div id="dispMcRangeText" style="font-weight:700; color:var(--accent); font-size:0.8rem;">-</div>
           </div>
           <div style="flex:1; background:var(--bg); padding:7px 9px; border-radius:6px; border:1px solid var(--border);">
             <div class="section-title">Value Range</div>
-            <div id="dispValRangeText" style="font-weight:800; color:var(--primary); font-size:0.8rem;">-</div>
+            <div id="dispValRangeText" style="font-weight:700; color:var(--primary); font-size:0.8rem;">-</div>
           </div>
         </div>
 
@@ -481,7 +484,7 @@
           <div style="max-height: 250px; overflow-y: auto;">
             <table class="tray-table">
               <thead>
-                <tr><th>Lot No</th><th>Qty</th><th>WT (g)</th><th>MC (₹)</th><th>Size</th><th>Value (₹)</th></tr>
+                <tr><th>Lot No</th><th>Qty</th><th>WT (g)</th><th>MC (%)</th><th>Size</th><th>Value (₹)</th></tr>
               </thead>
               <tbody id="trayTbody"></tbody>
             </table>
@@ -549,7 +552,6 @@
           <label class="pdf-chk-label"><input type="checkbox" id="pdfChkVariant" checked> SKU / Variant</label>
           <label class="pdf-chk-label"><input type="checkbox" id="pdfChkDesign"> Design Code</label>
           <label class="pdf-chk-label"><input type="checkbox" id="pdfChkWt" checked> Weight Range (WT)</label>
-          <!-- New MC Checkbox -->
           <label class="pdf-chk-label"><input type="checkbox" id="pdfChkMc" checked> Making Charges (MC)</label>
           <label class="pdf-chk-label"><input type="checkbox" id="pdfChkTag" checked> Special Tag</label>
           <label class="pdf-chk-label"><input type="checkbox" id="pdfChkCat"> Product Category</label>
@@ -568,7 +570,6 @@
   </div>
 
   <script>
-    // Strict Domain Security Guardrail
     (function() {
       const allowedDomain = "sravanarun.github.io";
       const isLocalHost = window.location.hostname === "localhost" || 
@@ -577,9 +578,9 @@
 
       if (window.location.hostname !== allowedDomain && !isLocalHost) {
         document.body.innerHTML = `
-          <div style="background:#ecfdf5; color:#ef4444; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:sans-serif; text-align:center; padding:20px;">
+          <div style="background:#0b1121; color:#ef4444; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:sans-serif; text-align:center; padding:20px;">
             <h2 style="margin-bottom:8px; font-size:1.6rem;">Access Denied</h2>
-            <p style="color:#047857; font-size:0.95rem;">Unauthorized mirror or environment detected. Execution halted.</p>
+            <p style="color:#94a3b8; font-size:0.95rem;">Unauthorized mirror or environment detected. Execution halted.</p>
           </div>`;
         throw new Error("Execution prohibited on unauthorized host.");
       }
@@ -613,7 +614,6 @@
       if (!isShown) menu.classList.add('show');
     }
 
-    // --- RAW FILE AUTO-FETCH ENGINE ---
     window.addEventListener('DOMContentLoaded', async () => {
       const loadOverlay = document.getElementById('loadingOverlay');
       const loadMsg = document.getElementById('loadingMsg');
@@ -640,9 +640,9 @@
           processRawData(parsedRows);
         } catch(errJson) {
           loadOverlay.innerHTML = `
-            <div class="auth-card" style="border-color: #f87171;">
+            <div class="auth-card" style="border-color: #ef4444;">
               <h3 style="color:#ef4444;">Data Not Found</h3>
-              <p style="color: #047857; margin-top: 10px;">Please upload <b>data.xlsx</b> (or data.json) to your GitHub repository folder.</p>
+              <p style="color: #94a3b8; margin-top: 10px;">Please upload <b>data.xlsx</b> (or data.json) to your GitHub repository folder.</p>
             </div>`;
         }
       }
@@ -674,9 +674,11 @@
         r._prolif = getVal(['Prolif', 'PROLIF']);
         r._wt = parseFloat(getVal(['WT', 'Weight', 'Gross Wt', 'Gross Weight'])) || 0;
         
-        // Final Value & Making Charges
         r._val = parseFloat(getVal(['Final Price - Pre Tax Value', 'Val', 'Value'])) || 0;
-        r._mc = parseFloat(getVal(['Making Charge', 'Making Charges', 'MC'])) || 0;
+        
+        // Handle MC nulls as missing instead of zeroing them
+        const rawMc = getVal(['Making Charge', 'Making Charges', 'MC']);
+        r._mc = rawMc === '' ? null : parseFloat(rawMc);
 
         const rawTag = getVal(['Special tag', 'Special Tag', 'Tag']);
         r._specialTag = rawTag;
@@ -708,28 +710,26 @@
       }
 
       return rawData.filter(r => {
-        // Universal Text/Tag Search
         if (textTokens.length > 0) {
           const searchableText = `${r._variant} ${r._design} ${r._cat} ${r._cluster} ${r._ag} ${r._karat}K ${r._size} ${r._specialTag}`.toLowerCase();
           if (!textTokens.every(term => searchableText.includes(term))) return false;
         }
 
-        // Exact Weight Direct Match
         if (exactWeightTokens.length > 0) {
           const wStr = r._wt.toFixed(3); const wRawStr = String(r._wt);
           if (!exactWeightTokens.every(tok => parseFloat(tok).toFixed(3) === wStr || wRawStr === tok)) return false;
         }
 
-        // Checklist Dropdowns
         for (const key of Object.keys(filterFields)) {
           if (key === excludeKey) continue;
           const sel = filterFields[key].selected;
           if (sel.size > 0 && !sel.has(String(r[filterFields[key].col] || '(Blank)').trim())) return false;
         }
 
-        // Consolidated Numeric Filter (Weight, Value, MC)
         if (numOp !== 'any' && !isNaN(numVal1)) {
           const mVal = numMetric === 'wt' ? r._wt : (numMetric === 'val' ? r._val : r._mc);
+          
+          if (mVal === null) return false; 
           
           if (numOp === 'eq' && Math.abs(mVal - numVal1) > 0.0001) return false;
           if (numOp === 'gt' && mVal <= numVal1) return false;
@@ -890,12 +890,17 @@
       document.getElementById('dispTotalQty').innerText = `${cur.rows.length} pcs`;
       document.getElementById('dispSizesText').innerText = Array.from(new Set(cur.rows.map(r => r._size))).filter(Boolean).join(', ') || 'N/A';
       
-      // Update Numeric Ranges
       const weights = cur.rows.map(r => r._wt);
       document.getElementById('dispWtRangeText').innerText = (Math.min(...weights) === Math.max(...weights)) ? `${Math.min(...weights).toFixed(3)}g` : `${Math.min(...weights).toFixed(3)} - ${Math.max(...weights).toFixed(3)}g`;
 
-      const mcs = cur.rows.map(r => r._mc);
-      document.getElementById('dispMcRangeText').innerText = (Math.min(...mcs) === Math.max(...mcs)) ? `₹${Math.min(...mcs).toLocaleString('en-IN')}` : `₹${Math.min(...mcs).toLocaleString('en-IN')} - ₹${Math.max(...mcs).toLocaleString('en-IN')}`;
+      const mcs = cur.rows.map(r => r._mc).filter(m => m !== null);
+      if (mcs.length > 0) {
+        const minMc = Math.min(...mcs);
+        const maxMc = Math.max(...mcs);
+        document.getElementById('dispMcRangeText').innerText = (minMc === maxMc) ? `${minMc}%` : `${minMc}% - ${maxMc}%`;
+      } else {
+        document.getElementById('dispMcRangeText').innerText = '-';
+      }
 
       const vals = cur.rows.map(r => r._val);
       document.getElementById('dispValRangeText').innerText = (Math.min(...vals) === Math.max(...vals)) ? `₹${Math.min(...vals).toLocaleString('en-IN')}` : `₹${Math.min(...vals).toLocaleString('en-IN')} - ₹${Math.max(...vals).toLocaleString('en-IN')}`;
@@ -928,13 +933,13 @@
         const lotVal = getVal(['LOT Number', 'Lotno', 'Lot No']) || '-';
         const qtyVal = getVal(['Quantity', 'Actual Quantity', 'Qty']) || 1;
         const priceVal = r._val;
-        const mcVal = r._mc;
+        const mcVal = r._mc !== null ? `${r._mc}%` : '-';
         
         const tr = document.createElement('tr');
         tr.innerHTML = `<td style="font-family:monospace; font-weight:700; color:var(--primary);">${lotVal}</td>
                         <td>${qtyVal}</td>
                         <td><b style="color:var(--text);">${r._wt.toFixed(3)}</b></td>
-                        <td style="color:var(--accent); font-weight:700;">₹${Number(mcVal).toLocaleString('en-IN')}</td>
+                        <td style="color:var(--accent); font-weight:700;">${mcVal}</td>
                         <td>${r._size}</td>
                         <td style="font-weight:700;">₹${Number(priceVal).toLocaleString('en-IN')}</td>`;
         tbody.appendChild(tr);
@@ -1106,7 +1111,7 @@
         const col = pagePos % cols; const row = Math.floor(pagePos / cols);
         const x = startX + col * (cardWidth + gapX); const y = startY + row * (cardHeight + gapY);
 
-        pdf.setDrawColor(4, 120, 87);
+        pdf.setDrawColor(15, 23, 42); // Slate border
         pdf.setLineWidth(0.4); pdf.setFillColor(255, 255, 255);
         pdf.roundedRect(x, y, cardWidth, cardHeight, 3, 3, 'FD');
 
@@ -1115,30 +1120,30 @@
         if (base64Img) {
           pdf.addImage(base64Img, 'JPEG', x + imgOffsetX, y + 4, imgSize, imgSize);
         } else {
-          pdf.setFillColor(241, 253, 245); pdf.rect(x + imgOffsetX, y + 4, imgSize, imgSize, 'F');
-          pdf.setFontSize(8); pdf.setTextColor(52, 211, 153);
+          pdf.setFillColor(241, 245, 249); pdf.rect(x + imgOffsetX, y + 4, imgSize, imgSize, 'F');
+          pdf.setFontSize(8); pdf.setTextColor(148, 163, 184);
           pdf.text("Image Unavailable", x + cardWidth / 2, y + 44, { align: 'center' });
         }
 
-        pdf.setDrawColor(241, 245, 249); pdf.line(x + 5, y + 86, x + cardWidth - 5, y + 86);
+        pdf.setDrawColor(226, 232, 240); pdf.line(x + 5, y + 86, x + cardWidth - 5, y + 86);
         let currentTextY = y + 91;
 
         if (incVariant) {
-          pdf.setFontSize(10); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(4, 120, 87); 
+          pdf.setFontSize(10); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(15, 23, 42); 
           pdf.text(firstRow._variant, x + 6, currentTextY); currentTextY += 5.5;
         }
         if (incDesign) {
-          pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(2, 44, 34); 
+          pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(71, 85, 105); 
           pdf.text(`DSN: ${firstRow._design}`, x + 6, currentTextY); currentTextY += 5.5;
         }
 
         let col1Y = currentTextY;
         if (incTag && firstRow._specialTag) {
           pdf.setFontSize(8); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(217, 119, 6); 
-          pdf.text(`★ TAG: ${firstRow._specialTag.toUpperCase()}`, x + 6, col1Y); col1Y += 4.5;
+          pdf.text(`★ ${firstRow._specialTag.toUpperCase()}`, x + 6, col1Y); col1Y += 4.5;
         }
         
-        pdf.setFont('helvetica', 'normal'); pdf.setTextColor(2, 44, 34);
+        pdf.setFont('helvetica', 'normal'); pdf.setTextColor(15, 23, 42);
         if (incCat) { pdf.text(`Cat: ${firstRow._cat || '-'}`, x + 6, col1Y); col1Y += 4.5; }
         if (incAg) { pdf.text(`AG: ${(firstRow._ag || '-').substring(0, 22)}`, x + 6, col1Y); col1Y += 4.5; }
         if (incCluster) { pdf.text(`Cluster: ${firstRow._cluster || '-'}`, x + 6, col1Y); col1Y += 4.5; }
@@ -1151,10 +1156,12 @@
           pdf.setFont('helvetica', 'bold'); pdf.text(`WT: ${wtStr}`, col2X, col2Y); pdf.setFont('helvetica', 'normal'); col2Y += 4.5;
         }
         if (incMc) {
-          const mcs = grp.map(r => r._mc);
-          const mcStr = Math.min(...mcs) === Math.max(...mcs) ? `₹${Math.min(...mcs).toLocaleString('en-IN')}` : `₹${Math.min(...mcs).toLocaleString('en-IN')}-₹${Math.max(...mcs).toLocaleString('en-IN')}`;
-          pdf.setFont('helvetica', 'bold'); pdf.setTextColor(217, 119, 6);
-          pdf.text(`MC: ${mcStr}`, col2X, col2Y); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(2, 44, 34); col2Y += 4.5;
+          const mcs = grp.map(r => r._mc).filter(m => m !== null);
+          if (mcs.length > 0) {
+            const mcStr = Math.min(...mcs) === Math.max(...mcs) ? `${Math.min(...mcs)}%` : `${Math.min(...mcs)}%-${Math.max(...mcs)}%`;
+            pdf.setFont('helvetica', 'bold'); pdf.setTextColor(217, 119, 6);
+            pdf.text(`MC: ${mcStr}`, col2X, col2Y); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(15, 23, 42); col2Y += 4.5;
+          }
         }
         if (incKarat) { pdf.text(`K: ${firstRow._karat || '-'}K | P: ${firstRow._prolif || '-'}`, col2X, col2Y); col2Y += 4.5; }
 
