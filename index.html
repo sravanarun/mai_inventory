@@ -8,8 +8,6 @@
   <!-- Excel & PDF Engines -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script> -->
-  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script> -->
 
   <style>
     :root {
@@ -547,7 +545,7 @@
   </div>
 
   <script>
-    // Strict Domain Security Guardrail - Retained for safety; Local files (file://) bypass this automatically
+    // Strict Domain Security Guardrail
     (function() {
       const allowedDomain = "sravanarun.github.io";
       const isLocalHost = window.location.hostname === "localhost" || 
@@ -570,7 +568,6 @@
     let currentIdx = 0;
     let isLightboxOpen = false;
 
-    // Unified property mappings
     const filterFields = {
       tag: { col: '_specialTagFilter', selected: new Set(), name: 'Tags' },
       design: { col: '_design', selected: new Set(), name: 'Designs' },
@@ -593,7 +590,6 @@
       if (!isShown) menu.classList.add('show');
     }
 
-    // --- Excel Upload File Parsing ---
     function handleFileSelect() {
       const fileInput = document.getElementById('fileInput');
       const errBox = document.getElementById('authErr');
@@ -634,7 +630,6 @@
     function processRawData(parsedRows) {
       rawData = [];
       parsedRows.forEach(r => {
-        // Find main variant column
         const variant = r['Item Code'] || r['Variant Code'] || r['SKU'] || r['Variant'];
         if (!variant) return;
 
@@ -651,7 +646,7 @@
         
         const rawTag = String(r['Special tag'] || '').trim();
         r._specialTag = rawTag;
-        r._specialTagFilter = rawTag ? rawTag : 'None'; // 'None' gives an option to view products with no tags
+        r._specialTagFilter = rawTag ? rawTag : 'None';
 
         rawData.push(r);
       });
@@ -660,7 +655,6 @@
       applyFilters();
     }
 
-    // --- Dynamic Special Tag Color Generation ---
     function getTagStyle(tag) {
       const norm = tag.toLowerCase().replace(/[^a-z0-9]/g, '');
       if (norm.includes('bestdeal')) return 'background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); color: #451a03; border: 1px solid #d97706; box-shadow: 0 4px 10px rgba(245, 158, 11, 0.4);';
@@ -668,7 +662,6 @@
       if (norm.includes('offer')) return 'background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); color: #fff; border: 1px solid #991b1b; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);';
       if (norm.includes('new')) return 'background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; border: 1px solid #047857; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);';
       
-      // Default hashing algorithm to generate unique beautiful colors for any unknown tag
       const colors = [
         'background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: #fff; border: 1px solid #5b21b6;',
         'background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: #fff; border: 1px solid #1e40af;',
@@ -681,9 +674,7 @@
       return colors[index] + ' box-shadow: 0 4px 10px rgba(0,0,0,0.3);';
     }
 
-    function handleUniversalSearch() {
-      applyFilters();
-    }
+    function handleUniversalSearch() { applyFilters(); }
 
     function getContextualRows(excludeKey = null) {
       const wtOp = document.getElementById('wtOp').value;
@@ -691,47 +682,31 @@
       const wt2 = parseFloat(document.getElementById('wtVal2').value);
       const rawInput = (document.getElementById('skuSearchInput')?.value || '').trim();
 
-      const textTokens = [];
-      const exactWeightTokens = [];
-
+      const textTokens = []; const exactWeightTokens = [];
       if (rawInput.length > 0) {
-        const tokens = rawInput.toLowerCase().split(/\s+/).filter(Boolean);
-        tokens.forEach(tok => {
-          if (/^[0-9]+(\.[0-9]+)?$/.test(tok)) {
-            exactWeightTokens.push(tok);
-          } else {
-            textTokens.push(tok);
-          }
+        rawInput.toLowerCase().split(/\s+/).filter(Boolean).forEach(tok => {
+          if (/^[0-9]+(\.[0-9]+)?$/.test(tok)) exactWeightTokens.push(tok);
+          else textTokens.push(tok);
         });
       }
 
       return rawData.filter(r => {
-        // 1. Keyword Text Search including Special Tag
         if (textTokens.length > 0) {
           const searchableText = `${r._variant} ${r._design} ${r._cat} ${r._cluster} ${r._ag} ${r._karat}K ${r._size} ${r._specialTag}`.toLowerCase();
-          const allTextMatch = textTokens.every(term => searchableText.includes(term));
-          if (!allTextMatch) return false;
+          if (!textTokens.every(term => searchableText.includes(term))) return false;
         }
 
-        // 2. Strict Exact Weight Match
         if (exactWeightTokens.length > 0) {
-          const wStr = r._wt.toFixed(3);
-          const wRawStr = String(r._wt);
-          const allWeightMatch = exactWeightTokens.every(tok => {
-            const formattedTok = parseFloat(tok).toFixed(3);
-            return wStr === formattedTok || wRawStr === tok;
-          });
-          if (!allWeightMatch) return false;
+          const wStr = r._wt.toFixed(3); const wRawStr = String(r._wt);
+          if (!exactWeightTokens.every(tok => parseFloat(tok).toFixed(3) === wStr || wRawStr === tok)) return false;
         }
 
-        // 3. Dropdown Checklist Filters
         for (const key of Object.keys(filterFields)) {
           if (key === excludeKey) continue;
           const sel = filterFields[key].selected;
           if (sel.size > 0 && !sel.has(String(r[filterFields[key].col] || '(Blank)').trim())) return false;
         }
 
-        // 4. Standalone Dedicated Weight Filter
         if (wtOp !== 'any' && !isNaN(wt1)) {
           const w = r._wt;
           if (wtOp === 'eq' && Math.abs(w - wt1) > 0.0001) return false;
@@ -739,10 +714,7 @@
           if (wtOp === 'gte' && w < wt1) return false;
           if (wtOp === 'lt' && w >= wt1) return false;
           if (wtOp === 'lte' && w > wt1) return false;
-          if (wtOp === 'between') {
-            if (isNaN(wt2)) return false;
-            if (w < Math.min(wt1, wt2) || w > Math.max(wt1, wt2)) return false;
-          }
+          if (wtOp === 'between' && (!isNaN(wt2) && (w < Math.min(wt1, wt2) || w > Math.max(wt1, wt2)))) return false;
         }
         return true;
       });
@@ -758,9 +730,7 @@
           counts[val] = (counts[val] || 0) + 1;
         });
 
-        filterFields[key].selected.forEach(selVal => {
-          if (!counts[selVal]) counts[selVal] = 0;
-        });
+        filterFields[key].selected.forEach(selVal => { if (!counts[selVal]) counts[selVal] = 0; });
 
         const listContainer = document.getElementById(`list-${key}`);
         const currentSearch = (document.querySelector(`#menu-${key} .dropdown-search`)?.value || '').toLowerCase();
@@ -774,9 +744,7 @@
           if (isChecked) checkedCount++;
           const item = document.createElement('label');
           item.className = 'dropdown-item';
-          if (currentSearch && !val.toLowerCase().includes(currentSearch)) {
-            item.style.display = 'none';
-          }
+          if (currentSearch && !val.toLowerCase().includes(currentSearch)) item.style.display = 'none';
           item.innerHTML = `<input type="checkbox" value="${val}" ${isChecked ? 'checked' : ''} onchange="handleCheckboxChange('${key}', '${val}', this.checked)"><span>${val} <small style="color:var(--text-muted)">(${counts[val]})</small></span>`;
           listContainer.appendChild(item);
         });
@@ -787,20 +755,15 @@
           selectAllChk.checked = (checkedCount === allAvailableKeys.length && allAvailableKeys.length > 0);
           selectAllChk.indeterminate = (checkedCount > 0 && checkedCount < allAvailableKeys.length);
         }
-        if (selectAllLbl) {
-          selectAllLbl.innerText = `${checkedCount} / ${allAvailableKeys.length}`;
-        }
-
+        if (selectAllLbl) selectAllLbl.innerText = `${checkedCount} / ${allAvailableKeys.length}`;
         updateDropdownBtnLabel(key);
       });
     }
 
     function toggleSelectAllDropdown(key) {
       const eligibleRows = getContextualRows(key);
-      const colField = filterFields[key].col;
-      const allVals = Array.from(new Set(eligibleRows.map(r => String(r[colField] || '(Blank)').trim())));
+      const allVals = Array.from(new Set(eligibleRows.map(r => String(r[filterFields[key].col] || '(Blank)').trim())));
       const isAllCurrentlySelected = allVals.length > 0 && allVals.every(v => filterFields[key].selected.has(v));
-
       if (isAllCurrentlySelected) filterFields[key].selected.clear();
       else allVals.forEach(v => filterFields[key].selected.add(v));
       applyFilters();
@@ -808,10 +771,8 @@
 
     function filterChecklist(key, search) {
       const s = search.toLowerCase();
-      const container = document.getElementById(`list-${key}`);
-      container.querySelectorAll('.dropdown-item').forEach(lbl => {
-        const txt = lbl.innerText.toLowerCase();
-        lbl.style.display = txt.includes(s) ? 'flex' : 'none';
+      document.getElementById(`list-${key}`).querySelectorAll('.dropdown-item').forEach(lbl => {
+        lbl.style.display = lbl.innerText.toLowerCase().includes(s) ? 'flex' : 'none';
       });
     }
 
@@ -822,18 +783,15 @@
     }
 
     function updateDropdownBtnLabel(key) {
-      const btn = document.querySelector(`#fb-${key} .dropdown-btn`);
       const count = filterFields[key].selected.size;
-      const baseName = filterFields[key].name;
-      btn.innerText = count === 0 ? `All ${baseName}` : `${count} Selected`;
+      document.querySelector(`#fb-${key} .dropdown-btn`).innerText = count === 0 ? `All ${filterFields[key].name}` : `${count} Selected`;
     }
 
     function handleWtOpChange() {
       const op = document.getElementById('wtOp').value;
-      const v1 = document.getElementById('wtVal1'), v2 = document.getElementById('wtVal2'), sp = document.getElementById('wtBetweenSpan');
-      v1.style.display = op === 'any' ? 'none' : 'inline-block';
-      v2.style.display = op === 'between' ? 'inline-block' : 'none';
-      sp.style.display = op === 'between' ? 'inline-block' : 'none';
+      document.getElementById('wtVal1').style.display = op === 'any' ? 'none' : 'inline-block';
+      document.getElementById('wtVal2').style.display = op === 'between' ? 'inline-block' : 'none';
+      document.getElementById('wtBetweenSpan').style.display = op === 'between' ? 'inline-block' : 'none';
       applyFilters();
     }
 
@@ -844,14 +802,9 @@
       document.getElementById('wtVal1').value = '';
       document.getElementById('wtVal2').value = '';
       document.querySelectorAll('.dropdown-search').forEach(input => input.value = '');
-
-      const v1 = document.getElementById('wtVal1');
-      const v2 = document.getElementById('wtVal2');
-      const span = document.getElementById('wtBetweenSpan');
-      v1.style.display = 'none';
-      v2.style.display = 'none';
-      span.style.display = 'none';
-
+      document.getElementById('wtVal1').style.display = 'none';
+      document.getElementById('wtVal2').style.display = 'none';
+      document.getElementById('wtBetweenSpan').style.display = 'none';
       applyFilters();
     }
 
@@ -873,9 +826,7 @@
       document.getElementById('statMaxIdx').innerText = filteredGroups.length;
       document.getElementById('exportCount').innerText = selectedVariantsMap.size;
       document.getElementById('statSelectedCount').innerText = selectedVariantsMap.size;
-
-      const count = (totalMatchedRows !== undefined) ? totalMatchedRows : filteredGroups.reduce((acc, g) => acc + g.rows.length, 0);
-      document.getElementById('statTotalUnits').innerText = `(Total Units: ${count})`;
+      document.getElementById('statTotalUnits').innerText = `(Total Units: ${(totalMatchedRows !== undefined) ? totalMatchedRows : filteredGroups.reduce((acc, g) => acc + g.rows.length, 0)})`;
 
       if (filteredGroups.length === 0) return;
       const cur = filteredGroups[currentIdx];
@@ -883,7 +834,6 @@
       
       document.getElementById('statCurIdx').innerText = currentIdx + 1;
 
-      // Special Tag Integration for Main View
       const tagDisp = document.getElementById('dispTag');
       if (firstRow._specialTag) {
         tagDisp.innerText = firstRow._specialTag;
@@ -894,20 +844,16 @@
       }
 
       const img = document.getElementById('itemImg');
-      img.style.opacity = '0';
-      img.style.display = 'block';
+      img.style.opacity = '0'; img.style.display = 'block';
       document.getElementById('imgFallback').style.display = 'none';
       document.getElementById('imgLoader').style.display = 'flex';
-
-      const dCode = (cur.design || '').trim().toUpperCase();
       img.dataset.retried = "0";
-      img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.jpg`;
+      img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${(cur.design || '').trim().toUpperCase()}.jpg`;
 
       if (window._imgPreloader) window._imgPreloader.src = '';
       if (filteredGroups[currentIdx + 1]) {
-        const nextD = (filteredGroups[currentIdx + 1].design || '').trim().toUpperCase();
         window._imgPreloader = new Image();
-        window._imgPreloader.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${nextD}.jpg`;
+        window._imgPreloader.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${(filteredGroups[currentIdx + 1].design || '').trim().toUpperCase()}.jpg`;
       }
 
       document.getElementById('dispVariant').innerText = cur.variant;
@@ -915,13 +861,8 @@
       document.getElementById('dispCat').innerText = firstRow._cat || '-';
       document.getElementById('dispCluster').innerText = firstRow._cluster || '-';
       document.getElementById('dispKaratProlif').innerText = `${firstRow._karat}K | P: ${firstRow._prolif}`;
-
-      const totalQty = cur.rows.length;
-      document.getElementById('dispTotalQty').innerText = `${totalQty} pcs`;
-
-      const sizes = Array.from(new Set(cur.rows.map(r => r._size))).filter(Boolean);
-      document.getElementById('dispSizesText').innerText = sizes.join(', ') || 'N/A';
-
+      document.getElementById('dispTotalQty').innerText = `${cur.rows.length} pcs`;
+      document.getElementById('dispSizesText').innerText = Array.from(new Set(cur.rows.map(r => r._size))).filter(Boolean).join(', ') || 'N/A';
       const weights = cur.rows.map(r => r._wt);
       document.getElementById('dispWtRangeText').innerText = `${Math.min(...weights).toFixed(3)} - ${Math.max(...weights).toFixed(3)} g`;
 
@@ -939,77 +880,43 @@
     }
 
     function renderDetailedTray(cur) {
-      const tbody = document.getElementById('trayTbody');
-      tbody.innerHTML = '';
-      const rows = cur.rows; 
-      document.getElementById('trayHeader').innerText = `Available Lots In-Store (${rows.length} lots)`;
-      rows.forEach(r => {
+      const tbody = document.getElementById('trayTbody'); tbody.innerHTML = '';
+      document.getElementById('trayHeader').innerText = `Available Lots In-Store (${cur.rows.length} lots)`;
+      cur.rows.forEach(r => {
         const tr = document.createElement('tr');
-        const lotVal = r['LOT Number'] || r['Lotno'] || '-';
-        const qtyVal = r['Quantity'] || r['Actual Quantity'] || r['Qty'] || 1;
-        const priceVal = r['Final Price - Pre Tax Value'] || r['Val'] || 0;
-        tr.innerHTML = `<td style="font-family:monospace; color:var(--primary);">${lotVal}</td><td>${qtyVal}</td><td><b>${r._wt.toFixed(3)}</b></td><td>${r._size}</td><td>₹${Number(priceVal).toLocaleString('en-IN')}</td>`;
+        tr.innerHTML = `<td style="font-family:monospace; color:var(--primary);">${r['LOT Number'] || r['Lotno'] || '-'}</td><td>${r['Quantity'] || r['Actual Quantity'] || r['Qty'] || 1}</td><td><b>${r._wt.toFixed(3)}</b></td><td>${r._size}</td><td>₹${Number(r['Final Price - Pre Tax Value'] || r['Val'] || 0).toLocaleString('en-IN')}</td>`;
         tbody.appendChild(tr);
       });
     }
 
-    function handleImageSuccess() {
-      document.getElementById('imgLoader').style.display = 'none';
-      document.getElementById('itemImg').style.opacity = '1';
-    }
-
+    function handleImageSuccess() { document.getElementById('imgLoader').style.display = 'none'; document.getElementById('itemImg').style.opacity = '1'; }
     function handleImageError() {
       const img = document.getElementById('itemImg');
-      const cur = filteredGroups[currentIdx];
-      const dCode = (cur?.design || '').trim().toUpperCase();
-
+      const dCode = (filteredGroups[currentIdx]?.design || '').trim().toUpperCase();
       if (img.dataset.retried === "0") {
-        img.dataset.retried = "1";
-        img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.JPG`;
+        img.dataset.retried = "1"; img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.JPG`;
         return;
       }
-
-      document.getElementById('imgLoader').style.display = 'none';
-      img.style.display = 'none';
-      const fallback = document.getElementById('imgFallback');
-      fallback.style.display = 'flex';
-      fallback.style.flexDirection = 'column';
-      fallback.style.alignItems = 'center';
-      fallback.style.justifyContent = 'center';
+      document.getElementById('imgLoader').style.display = 'none'; img.style.display = 'none';
+      const fallback = document.getElementById('imgFallback'); fallback.style.display = 'flex';
+      fallback.style.flexDirection = 'column'; fallback.style.alignItems = 'center'; fallback.style.justifyContent = 'center';
       fallback.innerHTML = `<div style="font-size: 2.2rem; margin-bottom: 6px;">🖼️</div><div style="font-weight: 700; color: #334155;">No Catalog Image Found</div><div style="font-size: 0.72rem; color: #94a3b8; margin-top: 4px;">Design: ${dCode || 'N/A'}</div>`;
     }
 
-    /* Lightbox Modal Operations */
-    function openLightbox() {
-      if (filteredGroups.length === 0) return;
-      isLightboxOpen = true;
-      document.getElementById('lightboxModal').classList.add('active');
-      syncLightboxContent();
-    }
-
-    function closeLightbox() {
-      isLightboxOpen = false;
-      document.getElementById('lightboxModal').classList.remove('active');
-    }
-
-    function handleLightboxBackdropClick(e) {
-      if (e.target.id === 'lightboxModal') closeLightbox();
-    }
+    function openLightbox() { if (filteredGroups.length === 0) return; isLightboxOpen = true; document.getElementById('lightboxModal').classList.add('active'); syncLightboxContent(); }
+    function closeLightbox() { isLightboxOpen = false; document.getElementById('lightboxModal').classList.remove('active'); }
+    function handleLightboxBackdropClick(e) { if (e.target.id === 'lightboxModal') closeLightbox(); }
 
     function syncLightboxContent() {
       if (!isLightboxOpen || filteredGroups.length === 0) return;
-
       const curGroup = filteredGroups[currentIdx];
       const dCode = (curGroup.design || '').trim().toUpperCase();
       const firstRow = curGroup.rows[0];
 
       document.getElementById('modalDesignBadge').innerText = dCode;
       document.getElementById('modalMetaTag').innerText = `${firstRow._cat} • ${firstRow._karat}K`;
-      
       const weights = curGroup.rows.map(r => r._wt);
-      const minWt = Math.min(...weights).toFixed(3);
-      const maxWt = Math.max(...weights).toFixed(3);
-      document.getElementById('modalWtTag').innerText = (minWt === maxWt) ? `WT: ${minWt} g` : `WT: ${minWt} - ${maxWt} g`;
+      document.getElementById('modalWtTag').innerText = (Math.min(...weights) === Math.max(...weights)) ? `WT: ${Math.min(...weights).toFixed(3)} g` : `WT: ${Math.min(...weights).toFixed(3)} - ${Math.max(...weights).toFixed(3)} g`;
       document.getElementById('modalIdxTag').innerText = `${currentIdx + 1} of ${filteredGroups.length}`;
 
       const modalTag = document.getElementById('modalTag');
@@ -1017,61 +924,35 @@
         modalTag.innerText = firstRow._specialTag;
         modalTag.style.cssText = getTagStyle(firstRow._specialTag) + " position: absolute; top: 16px; left: 16px; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; z-index: 10;";
         modalTag.style.display = 'block';
-      } else {
-        modalTag.style.display = 'none';
-      }
+      } else { modalTag.style.display = 'none'; }
 
       const modalImg = document.getElementById('modalImg');
-      const modalLoader = document.getElementById('modalImgLoader');
-      const modalFallback = document.getElementById('modalFallback');
-
-      modalImg.style.opacity = '0';
-      modalImg.style.display = 'block';
-      modalFallback.style.display = 'none';
-      modalLoader.style.display = 'flex';
-
-      modalImg.dataset.retried = "0";
-      modalImg.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.jpg`;
+      modalImg.style.opacity = '0'; modalImg.style.display = 'block';
+      document.getElementById('modalFallback').style.display = 'none'; document.getElementById('modalImgLoader').style.display = 'flex';
+      modalImg.dataset.retried = "0"; modalImg.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.jpg`;
 
       const isConf = selectedVariantsMap.has(curGroup.variant);
-      const modalConfirmBtn = document.getElementById('modalConfirmBtn');
-      modalConfirmBtn.innerText = isConf ? "✖ Remove Selection" : "✔ Confirm Selection";
-      modalConfirmBtn.className = isConf ? "btn-action btn-confirmed" : "btn-action btn-confirm";
-
+      document.getElementById('modalConfirmBtn').innerText = isConf ? "✖ Remove Selection" : "✔ Confirm Selection";
+      document.getElementById('modalConfirmBtn').className = isConf ? "btn-action btn-confirmed" : "btn-action btn-confirm";
       document.getElementById('modalPrevBtn').disabled = (currentIdx === 0);
       document.getElementById('modalNextBtn').disabled = (currentIdx === filteredGroups.length - 1);
     }
 
-    function handleModalImgSuccess() {
-      document.getElementById('modalImgLoader').style.display = 'none';
-      document.getElementById('modalImg').style.opacity = '1';
-    }
-
+    function handleModalImgSuccess() { document.getElementById('modalImgLoader').style.display = 'none'; document.getElementById('modalImg').style.opacity = '1'; }
     function handleModalImgError() {
-      const img = document.getElementById('modalImg');
-      const curGroup = filteredGroups[currentIdx];
-      const dCode = (curGroup?.design || '').trim().toUpperCase();
-
+      const img = document.getElementById('modalImg'); const dCode = (filteredGroups[currentIdx]?.design || '').trim().toUpperCase();
       if (img.dataset.retried === "0") {
-        img.dataset.retried = "1";
-        img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.JPG`;
-        return;
+        img.dataset.retried = "1"; img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.JPG`; return;
       }
-
-      document.getElementById('modalImgLoader').style.display = 'none';
-      img.style.display = 'none';
-      const fallback = document.getElementById('modalFallback');
-      fallback.style.display = 'flex';
-      fallback.style.flexDirection = 'column';
-      fallback.style.alignItems = 'center';
-      fallback.style.justifyContent = 'center';
+      document.getElementById('modalImgLoader').style.display = 'none'; img.style.display = 'none';
+      const fallback = document.getElementById('modalFallback'); fallback.style.display = 'flex';
+      fallback.style.flexDirection = 'column'; fallback.style.alignItems = 'center'; fallback.style.justifyContent = 'center';
       fallback.innerHTML = `<div style="font-size: 3rem; margin-bottom: 6px;">🖼️</div><div style="font-weight: 700; color: #334155;">No Catalog Image Found</div><div style="font-size: 0.8rem; color: #94a3b8; margin-top: 4px;">Design: ${dCode || 'N/A'}</div>`;
     }
 
     let touchStartX = 0; let touchEndX = 0;
-    const lightboxBody = document.getElementById('lightboxBody');
-    lightboxBody.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
-    lightboxBody.addEventListener('touchend', (e) => {
+    document.getElementById('lightboxBody').addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+    document.getElementById('lightboxBody').addEventListener('touchend', (e) => {
       touchEndX = e.changedTouches[0].screenX;
       if (touchEndX < touchStartX - 50) navigateVariant(1);
       if (touchEndX > touchStartX + 50) navigateVariant(-1);
@@ -1090,18 +971,8 @@
       updateUI();
     }
 
-    function unselectAllVariants() {
-      if (selectedVariantsMap.size === 0) return;
-      selectedVariantsMap.clear();
-      updateUI();
-    }
-
-    function navigateVariant(s) {
-      const n = currentIdx + s;
-      if (n >= 0 && n < filteredGroups.length) { 
-        currentIdx = n; updateUI(); 
-      }
-    }
+    function unselectAllVariants() { if (selectedVariantsMap.size === 0) return; selectedVariantsMap.clear(); updateUI(); }
+    function navigateVariant(s) { const n = currentIdx + s; if (n >= 0 && n < filteredGroups.length) { currentIdx = n; updateUI(); } }
 
     window.addEventListener('keydown', (e) => {
       if (filteredGroups.length === 0 || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
@@ -1111,36 +982,28 @@
       else if (e.key === 'Escape' && isLightboxOpen) { closeLightbox(); }
     });
 
-    /* Export Modal Management */
-    function openExportModal() {
-      if (selectedVariantsMap.size === 0) { alert("No variants confirmed yet."); return; }
-      document.getElementById('exportModal').classList.add('active');
-    }
-
+    function openExportModal() { if (selectedVariantsMap.size === 0) { alert("No variants confirmed yet."); return; } document.getElementById('exportModal').classList.add('active'); }
     function closeExportModal() { document.getElementById('exportModal').classList.remove('active'); }
 
-    /* Excel Export */
     function exportSelectedExcel() {
       closeExportModal();
       const rows = [];
       selectedVariantsMap.forEach(grp => grp.forEach(r => {
         const c = { ...r };
-        // Purge internals for export clarity
         delete c._variant; delete c._design; delete c._cat; delete c._cluster; 
         delete c._ag; delete c._size; delete c._karat; delete c._prolif; 
         delete c._wt; delete c._specialTag; delete c._specialTagFilter;
         rows.push(c);
       }));
-      const ws = XLSX.utils.json_to_sheet(rows);
-      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(rows); const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Selected");
       XLSX.writeFile(wb, `InStore_Selected_${new Date().toISOString().slice(0,10)}.xlsx`);
     }
 
-    /* PDF Generation */
+    /* BATCHED PDF GENERATION ENGINE (500px / 80% Quality Sweet Spot) */
     async function exportSelectedPDF() {
       const actionBtn = document.getElementById('pdfExportActionBtn');
-      actionBtn.disabled = true; actionBtn.innerText = "⏳ Generating PDF...";
+      actionBtn.disabled = true;
 
       const incVariant = document.getElementById('pdfChkVariant').checked;
       const incDesign = document.getElementById('pdfChkDesign').checked;
@@ -1152,6 +1015,32 @@
       const incSize = document.getElementById('pdfChkSize').checked;
       const incKarat = document.getElementById('pdfChkKarat').checked;
 
+      const uniqueVariants = Array.from(selectedVariantsMap.values());
+      const totalItems = uniqueVariants.length;
+      
+      // PHASE 1: BATCH FETCH
+      const BATCH_SIZE = 15;
+      const preloadedImages = [];
+
+      for (let i = 0; i < totalItems; i += BATCH_SIZE) {
+        actionBtn.innerText = `⏳ Fetching Images (${Math.min(i + BATCH_SIZE, totalItems)}/${totalItems})...`;
+        const batch = uniqueVariants.slice(i, i + BATCH_SIZE);
+        const batchPromises = batch.map(async (grp) => {
+          const dCode = (grp[0]._design || '').trim().toUpperCase();
+          const baseUrl = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}`;
+          try {
+            return await fetchImageAsBase64(`${baseUrl}.jpg`);
+          } catch (e1) {
+            try { return await fetchImageAsBase64(`${baseUrl}.JPG`); } 
+            catch (e2) { return null; }
+          }
+        });
+        const batchResults = await Promise.all(batchPromises);
+        preloadedImages.push(...batchResults);
+      }
+
+      // PHASE 2: BUILD PDF
+      actionBtn.innerText = "⏳ Assembling PDF Document...";
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF('p', 'mm', 'a4');
       
@@ -1161,129 +1050,56 @@
       const imgSize = 80; const imgOffsetX = (cardWidth - imgSize) / 2;
 
       let itemIndex = 0;
-      const uniqueVariants = Array.from(selectedVariantsMap.values());
-
       for (const grp of uniqueVariants) {
         if (itemIndex > 0 && itemIndex % itemsPerPage === 0) pdf.addPage();
-
         const pagePos = itemIndex % itemsPerPage;
-        const col = pagePos % cols;
-        const row = Math.floor(pagePos / cols);
+        const col = pagePos % cols; const row = Math.floor(pagePos / cols);
+        const x = startX + col * (cardWidth + gapX); const y = startY + row * (cardHeight + gapY);
 
-        const x = startX + col * (cardWidth + gapX);
-        const y = startY + row * (cardHeight + gapY);
-
-        // Card Container
-        pdf.setDrawColor(203, 213, 225);
-        pdf.setLineWidth(0.4);
-        pdf.setFillColor(255, 255, 255);
+        pdf.setDrawColor(203, 213, 225); pdf.setLineWidth(0.4); pdf.setFillColor(255, 255, 255);
         pdf.roundedRect(x, y, cardWidth, cardHeight, 3, 3, 'FD');
 
         const firstRow = grp[0];
-        const dCode = (firstRow._design || '').trim().toUpperCase();
-        const baseUrl = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}`;
-
-        try {
-          const base64Img = await fetchImageAsBase64(`${baseUrl}.jpg`);
+        const base64Img = preloadedImages[itemIndex];
+        if (base64Img) {
           pdf.addImage(base64Img, 'JPEG', x + imgOffsetX, y + 4, imgSize, imgSize);
-        } catch (e1) {
-          try {
-            const base64Img2 = await fetchImageAsBase64(`${baseUrl}.JPG`);
-            pdf.addImage(base64Img2, 'JPEG', x + imgOffsetX, y + 4, imgSize, imgSize);
-          } catch (e2) {
-            pdf.setFillColor(248, 250, 252);
-            pdf.rect(x + imgOffsetX, y + 4, imgSize, imgSize, 'F');
-            pdf.setFontSize(8);
-            pdf.setTextColor(148, 163, 184);
-            pdf.text("Image Unavailable", x + cardWidth / 2, y + 44, { align: 'center' });
-          }
+        } else {
+          pdf.setFillColor(248, 250, 252); pdf.rect(x + imgOffsetX, y + 4, imgSize, imgSize, 'F');
+          pdf.setFontSize(8); pdf.setTextColor(148, 163, 184);
+          pdf.text("Image Unavailable", x + cardWidth / 2, y + 44, { align: 'center' });
         }
 
-        // Divider
-        pdf.setDrawColor(241, 245, 249);
-        pdf.line(x + 5, y + 86, x + cardWidth - 5, y + 86);
-
+        pdf.setDrawColor(241, 245, 249); pdf.line(x + 5, y + 86, x + cardWidth - 5, y + 86);
         let currentTextY = y + 91;
 
         if (incVariant) {
-          pdf.setFontSize(10);
-          pdf.setFont('helvetica', 'bold');
-          pdf.setTextColor(2, 132, 199); 
-          pdf.text(firstRow._variant, x + 6, currentTextY);
-          currentTextY += 5.5;
+          pdf.setFontSize(10); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(2, 132, 199); 
+          pdf.text(firstRow._variant, x + 6, currentTextY); currentTextY += 5.5;
         }
-
         if (incDesign) {
-          pdf.setFontSize(9);
-          pdf.setFont('helvetica', 'bold');
-          pdf.setTextColor(15, 23, 42); 
-          pdf.text(`DSN: ${firstRow._design}`, x + 6, currentTextY);
-          currentTextY += 5.5;
+          pdf.setFontSize(9); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(15, 23, 42); 
+          pdf.text(`DSN: ${firstRow._design}`, x + 6, currentTextY); currentTextY += 5.5;
         }
 
         let col1Y = currentTextY;
-        
         if (incTag && firstRow._specialTag) {
-          pdf.setFontSize(8);
-          pdf.setFont('helvetica', 'bold');
-          pdf.setTextColor(234, 88, 12); 
-          pdf.text(`★ TAG: ${firstRow._specialTag.toUpperCase()}`, x + 6, col1Y);
-          col1Y += 4.5;
-          pdf.setFont('helvetica', 'normal');
-          pdf.setTextColor(51, 65, 85);
+          pdf.setFontSize(8); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(234, 88, 12); 
+          pdf.text(`★ TAG: ${firstRow._specialTag.toUpperCase()}`, x + 6, col1Y); col1Y += 4.5;
         }
+        
+        pdf.setFont('helvetica', 'normal'); pdf.setTextColor(51, 65, 85);
+        if (incCat) { pdf.text(`Cat: ${firstRow._cat || '-'}`, x + 6, col1Y); col1Y += 4.5; }
+        if (incAg) { pdf.text(`AG: ${(firstRow._ag || '-').substring(0, 22)}`, x + 6, col1Y); col1Y += 4.5; }
+        if (incCluster) { pdf.text(`Cluster: ${firstRow._cluster || '-'}`, x + 6, col1Y); col1Y += 4.5; }
+        if (incSize) { pdf.text(`Size: ${Array.from(new Set(grp.map(r => r._size))).filter(Boolean).join(', ') || '-'}`, x + 6, col1Y); col1Y += 4.5; }
 
-        if (incCat) {
-          pdf.setFontSize(8);
-          pdf.setFont('helvetica', 'normal');
-          pdf.setTextColor(51, 65, 85);
-          pdf.text(`Cat: ${firstRow._cat || '-'}`, x + 6, col1Y);
-          col1Y += 4.5;
-        }
-        if (incAg) {
-          pdf.setFontSize(8);
-          pdf.setFont('helvetica', 'normal');
-          pdf.setTextColor(51, 65, 85);
-          const agTrimmed = (firstRow._ag || '-').substring(0, 22);
-          pdf.text(`AG: ${agTrimmed}`, x + 6, col1Y);
-          col1Y += 4.5;
-        }
-        if (incCluster) {
-          pdf.setFontSize(8);
-          pdf.setFont('helvetica', 'normal');
-          pdf.setTextColor(51, 65, 85);
-          pdf.text(`Cluster: ${firstRow._cluster || '-'}`, x + 6, col1Y);
-          col1Y += 4.5;
-        }
-        if (incSize) {
-          pdf.setFontSize(8);
-          pdf.setFont('helvetica', 'normal');
-          pdf.setTextColor(51, 65, 85);
-          const sizes = Array.from(new Set(grp.map(r => r._size))).filter(Boolean).join(', ');
-          pdf.text(`Size: ${sizes || '-'}`, x + 6, col1Y);
-          col1Y += 4.5;
-        }
-
-        let col2Y = currentTextY;
-        const col2X = x + 48;
+        let col2Y = currentTextY; const col2X = x + 48;
         if (incWt) {
           const weights = grp.map(r => r._wt);
-          const minWt = Math.min(...weights).toFixed(3);
-          const maxWt = Math.max(...weights).toFixed(3);
-          const wtStr = minWt === maxWt ? `${minWt}g` : `${minWt}-${maxWt}g`;
-          pdf.setFont('helvetica', 'bold');
-          pdf.setTextColor(51, 65, 85);
-          pdf.text(`WT: ${wtStr}`, col2X, col2Y);
-          pdf.setFont('helvetica', 'normal');
-          col2Y += 4.5;
+          const wtStr = Math.min(...weights) === Math.max(...weights) ? `${Math.min(...weights).toFixed(3)}g` : `${Math.min(...weights).toFixed(3)}-${Math.max(...weights).toFixed(3)}g`;
+          pdf.setFont('helvetica', 'bold'); pdf.text(`WT: ${wtStr}`, col2X, col2Y); pdf.setFont('helvetica', 'normal'); col2Y += 4.5;
         }
-        if (incKarat) {
-          pdf.setFontSize(8);
-          pdf.setFont('helvetica', 'normal');
-          pdf.setTextColor(51, 65, 85);
-          pdf.text(`K: ${firstRow._karat || '-'}K | P: ${firstRow._prolif || '-'}`, col2X, col2Y);
-          col2Y += 4.5;
-        }
+        if (incKarat) { pdf.text(`K: ${firstRow._karat || '-'}K | P: ${firstRow._prolif || '-'}`, col2X, col2Y); col2Y += 4.5; }
 
         itemIndex++;
       }
@@ -1293,26 +1109,22 @@
       closeExportModal();
     }
 
-    function fetchImageAsBase64(url, timeoutMs = 15000) {
+    function fetchImageAsBase64(url, timeoutMs = 8000) {
       return new Promise((resolve, reject) => {
-        const img = new Image();
-        let timeoutId;
-        img.crossOrigin = 'Anonymous';
+        const img = new Image(); let timeoutId; img.crossOrigin = 'Anonymous';
         img.onload = () => {
           clearTimeout(timeoutId);
           try {
             const canvas = document.createElement('canvas');
-            const MAX_DIM = 600;
-            let w = img.naturalWidth || 400; let h = img.naturalHeight || 400;
+            const MAX_DIM = 500; // Optimal 500px resolution
+            let w = img.naturalWidth || 500; let h = img.naturalHeight || 500;
             if (w > MAX_DIM || h > MAX_DIM) {
-              const ratio = Math.min(MAX_DIM / w, MAX_DIM / h);
-              w = w * ratio; h = h * ratio;
+              const ratio = Math.min(MAX_DIM / w, MAX_DIM / h); w *= ratio; h *= ratio;
             }
             canvas.width = w; canvas.height = h;
             const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
-            ctx.drawImage(img, 0, 0, w, h);
-            resolve(canvas.toDataURL('image/jpeg', 0.80)); 
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', 0.80)); // 80% Quality
           } catch (e) { reject(e); }
         };
         img.onerror = () => { clearTimeout(timeoutId); reject(new Error('Image fetch failed')); };
