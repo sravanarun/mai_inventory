@@ -5,34 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>In-Store Stock Catalogue</title>
   
-  <!-- Decompression & Decryption Engines -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-  <!-- Export Engines -->
+  <!-- Export & Parsing Engines -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <style>
-    /* ---------------------------------------------------
-       GREEN THEME (Emerald & Forest Palette)
-       --------------------------------------------------- */
+    /* GREEN THEME (Emerald & Forest Palette) */
     :root {
-      --bg: #022c22;             /* Very Dark Green */
-      --card-bg: #064e3b;        /* Dark Emerald */
-      --panel-bg: #065f46;       /* Mid Emerald */
-      --border: #047857;         /* Bright Emerald Border */
-      --primary: #34d399;        /* Light Green Highlight */
+      --bg: #022c22;             
+      --card-bg: #064e3b;        
+      --panel-bg: #065f46;       
+      --border: #047857;         
+      --primary: #34d399;        
       --primary-hover: #10b981;  
-      --accent: #fbbf24;         /* Gold/Amber for Badges */
-      --text: #ecfdf5;           /* Off-White Greenish Text */
-      --text-muted: #a7f3d0;     /* Muted Green Text */
+      --accent: #fbbf24;         
+      --text: #ecfdf5;           
+      --text-muted: #a7f3d0;     
     }
 
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
     body { background: var(--bg); color: var(--text); margin: 0; padding: 12px 14px 80px 14px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
 
-    /* Security Passcode Modal */
-    #authOverlay {
+    /* Loading Overlay (No Passwords) */
+    #loadingOverlay {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
       background: rgba(2, 44, 34, 0.98); z-index: 99999; display: flex;
       align-items: center; justify-content: center; flex-direction: column;
@@ -43,20 +38,9 @@
       box-shadow: 0 20px 40px rgba(0,0,0,0.8);
     }
     .auth-card h3 { color: var(--primary); margin: 0 0 8px 0; }
-    .auth-card p { color: var(--text-muted); font-size: 0.82rem; margin: 0 0 18px 0; }
-    .auth-input {
-      width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border);
-      color: #fff; border-radius: 6px; font-size: 1.1rem; text-align: center;
-      letter-spacing: 2px; outline: none; margin-bottom: 12px;
-    }
-    .auth-input:focus { border-color: var(--primary); }
-    .auth-btn {
-      width: 100%; padding: 12px; background: var(--primary-hover); border: none;
-      color: #fff; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 0.95rem;
-    }
-    .auth-btn:hover { background: #059669; }
-    .auth-err { color: #f87171; font-size: 0.82rem; margin-top: 10px; display: none; }
-    .auth-loading { color: var(--primary); font-size: 0.82rem; margin-top: 10px; display: none; }
+    .auth-card p { color: var(--text-muted); font-size: 0.85rem; margin: 0; }
+    .main-spinner { width: 45px; height: 45px; border: 4px solid var(--panel-bg); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 20px auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     /* Header & Panel */
     .header { width: 100%; max-width: 1250px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
@@ -80,7 +64,6 @@
     .dropdown-menu.show { display: flex; }
     .dropdown-menu-wide { min-width: 440px; max-width: 520px; max-height: 380px; }
 
-    /* Dropdown Toolbar */
     .dropdown-toolbar { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
     .select-all-row { display: flex; align-items: center; justify-content: space-between; font-size: 0.75rem; color: var(--primary); cursor: pointer; padding: 2px 4px; }
     .select-all-row:hover { background: var(--panel-bg); border-radius: 4px; }
@@ -100,7 +83,6 @@
     .weight-row select { width: 120px; }
     .weight-row input { width: 75px; }
 
-    /* Stats Bar and Bulk Selectors */
     .stats-bar { width: 100%; max-width: 1250px; display: flex; justify-content: space-between; align-items: center; background: var(--panel-bg); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 10px; font-size: 0.78rem; color: var(--text-muted); flex-wrap: wrap; gap: 8px; }
     .stats-bar b { color: var(--primary); }
     .bulk-btn-group { display: flex; gap: 6px; align-items: center; }
@@ -126,8 +108,6 @@
       border: 1px solid var(--border); opacity: 0.85;
     }
     .img-loader { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--primary-hover); font-size: 0.85rem; font-weight: 700; background: #ffffff; width: 100%; height: 100%; z-index: 5; }
-    .spinner { width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: var(--primary-hover); border-radius: 50%; animation: spin 0.8s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
     .img-fallback { color: #64748b; font-size: 0.85rem; text-align: center; display: none; padding: 20px; z-index: 6; }
 
     /* Elegant Special Tag styling */
@@ -238,15 +218,12 @@
 </head>
 <body>
 
-  <!-- Password Authentication -->
-  <div id="authOverlay">
+  <!-- Clean Auto-Fetch Loading Overlay -->
+  <div id="loadingOverlay">
     <div class="auth-card">
-      <h3>In-Store Secured Access</h3>
-      <p>Enter the store PIN to decrypt the fetched stock data.</p>
-      <input type="password" id="passInput" class="auth-input" placeholder="Password" onkeydown="if(event.key==='Enter') decryptAndLoad()">
-      <button class="auth-btn" id="unlockBtn" onclick="decryptAndLoad()">Unlock Catalog</button>
-      <div id="authLoading" class="auth-loading">⏳ Fetching encrypted dataset...</div>
-      <div id="authErr" class="auth-err">Incorrect PIN. Access Denied.</div>
+      <h3>In-Store Catalog</h3>
+      <div class="main-spinner"></div>
+      <p id="loadingMsg" style="color: var(--primary); font-weight: bold;">Fetching Live Inventory...</p>
     </div>
   </div>
 
@@ -576,8 +553,6 @@
     let filteredGroups = [];
     let selectedVariantsMap = new Map();
     let currentIdx = 0;
-    let encryptedData = "";
-    let dataFetchPromise = null;
     let isLightboxOpen = false;
 
     const filterFields = {
@@ -602,83 +577,44 @@
       if (!isShown) menu.classList.add('show');
     }
 
-    // Auto-fetch the encrypted file on load
-    window.addEventListener('DOMContentLoaded', () => {
-      dataFetchPromise = fetch(`data.enc?t=${Date.now()}`)
-        .then(res => {
-          if (!res.ok) throw new Error("Could not find data.enc");
-          return res.text();
-        })
-        .then(text => {
-          encryptedData = text;
-          return text;
-        })
-        .catch(err => {
-          console.error(err);
-          return null;
-        });
-    });
-
-    // Decrypt and process the JSON just like your original code
-    async function decryptAndLoad() {
-      const pin = document.getElementById('passInput').value.trim();
-      const errBox = document.getElementById('authErr');
-      const loadBox = document.getElementById('authLoading');
-      const btn = document.getElementById('unlockBtn');
-
-      errBox.style.display = 'none';
-
-      if (!pin) {
-        errBox.innerText = "Please enter your password / PIN.";
-        errBox.style.display = 'block';
-        return;
-      }
-
-      if (!encryptedData) {
-        loadBox.style.display = 'block';
-        btn.disabled = true;
-        try {
-          encryptedData = await dataFetchPromise;
-        } catch (e) {
-          console.error(e);
-        } finally {
-          loadBox.style.display = 'none';
-          btn.disabled = false;
-        }
-      }
-
-      if (!encryptedData) {
-        errBox.innerText = "Failed to load data.enc file. Verify repository files.";
-        errBox.style.display = 'block';
-        return;
-      }
+    // --- RAW FILE AUTO-FETCH ENGINE ---
+    window.addEventListener('DOMContentLoaded', async () => {
+      const loadOverlay = document.getElementById('loadingOverlay');
+      const loadMsg = document.getElementById('loadingMsg');
 
       try {
-        const bytes = CryptoJS.AES.decrypt(encryptedData, pin);
-        const base64Compressed = bytes.toString(CryptoJS.enc.Utf8);
-        if (!base64Compressed) throw new Error("Incorrect Password");
-
-        const binaryStr = atob(base64Compressed);
-        const len = binaryStr.length;
-        const bytesArr = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-          bytesArr[i] = binaryStr.charCodeAt(i);
-        }
-        const decompressedJsonStr = pako.ungzip(bytesArr, { to: 'string' });
-        const parsedRows = JSON.parse(decompressedJsonStr);
+        loadMsg.innerText = "Fetching data.xlsx from server...";
+        const response = await fetch(`data.xlsx?t=${Date.now()}`);
+        if (!response.ok) throw new Error("Could not find data.xlsx");
+        
+        loadMsg.innerText = "Parsing spreadsheet...";
+        const arrayBuffer = await response.arrayBuffer();
+        const data = new Uint8Array(arrayBuffer);
+        const workbook = XLSX.read(data, {type: 'array'});
+        const firstSheet = workbook.SheetNames[0];
+        const parsedRows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
         
         processRawData(parsedRows);
-      } catch (e) {
-        console.error(e);
-        errBox.innerText = "Incorrect PIN. Access Denied.";
-        errBox.style.display = 'block';
+      } catch (errXlsx) {
+        try {
+          loadMsg.innerText = "Excel not found. Trying data.json...";
+          const resJson = await fetch(`data.json?t=${Date.now()}`);
+          if(!resJson.ok) throw new Error("No json found either");
+          const parsedRows = await resJson.json();
+          processRawData(parsedRows);
+        } catch(errJson) {
+          loadOverlay.innerHTML = `
+            <div class="auth-card" style="border-color: #f87171;">
+              <h3 style="color:#f87171;">Data Not Found</h3>
+              <p style="color: #a7f3d0; margin-top: 10px;">Please upload <b>data.xlsx</b> (or data.json) to your GitHub repository folder.</p>
+            </div>`;
+        }
       }
-    }
+    });
 
     function processRawData(parsedRows) {
       rawData = [];
       parsedRows.forEach(r => {
-        // Robust value getter across standard column names
         const getVal = (colNames) => {
           for (const name of colNames) {
             for (const key of Object.keys(r)) {
@@ -709,7 +645,7 @@
         rawData.push(r);
       });
 
-      document.getElementById('authOverlay').style.display = 'none';
+      document.getElementById('loadingOverlay').style.display = 'none';
       applyFilters();
     }
 
@@ -1049,7 +985,7 @@
       XLSX.writeFile(wb, `InStore_Selected_${new Date().toISOString().slice(0,10)}.xlsx`);
     }
 
-    /* BATCHED PDF GENERATION ENGINE (500px / 80% Quality Sweet Spot) */
+    /* BATCHED PDF GENERATION ENGINE */
     async function exportSelectedPDF() {
       const actionBtn = document.getElementById('pdfExportActionBtn');
       actionBtn.disabled = true;
@@ -1103,7 +1039,7 @@
         const col = pagePos % cols; const row = Math.floor(pagePos / cols);
         const x = startX + col * (cardWidth + gapX); const y = startY + row * (cardHeight + gapY);
 
-        pdf.setDrawColor(4, 120, 87); // Emerald border for PDF cards
+        pdf.setDrawColor(4, 120, 87);
         pdf.setLineWidth(0.4); pdf.setFillColor(255, 255, 255);
         pdf.roundedRect(x, y, cardWidth, cardHeight, 3, 3, 'FD');
 
