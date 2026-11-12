@@ -113,7 +113,6 @@
       border: 1px solid var(--border); opacity: 0.85;
     }
     .img-loader { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--primary); font-size: 0.85rem; font-weight: 700; background: #0f172a; width: 100%; height: 100%; z-index: 5; }
-    .spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
     .img-fallback { color: #64748b; font-size: 0.85rem; text-align: center; display: none; padding: 20px; z-index: 6; }
 
     .special-tag-badge {
@@ -442,7 +441,7 @@
       
       <div class="image-viewer" onclick="openLightbox()" title="Click to enlarge image">
         <div id="dispTag" class="special-tag-badge" style="display:none;"></div>
-        <div class="img-loader" id="imgLoader"><div class="spinner"></div><span>Loading image...</span></div>
+        <div class="img-loader" id="imgLoader"><div class="spinner"></div></div>
         <img id="itemImg" src="" alt="Variant Preview" onload="handleImageSuccess()" onerror="handleImageError()">
         <div id="imgFallback" class="img-fallback">Image not found on catalog server</div>
         <div class="zoom-hint">🔍 Tap to Zoom</div>
@@ -517,7 +516,7 @@
 
     <div class="lightbox-body" id="lightboxBody">
       <div id="modalTag" class="special-tag-badge" style="display:none; font-size: 0.85rem; padding: 6px 14px; top: 16px; left: 16px;"></div>
-      <div class="img-loader" id="modalImgLoader"><div class="spinner"></div><span>Loading full-size preview...</span></div>
+      <div class="img-loader" id="modalImgLoader"><div class="spinner"></div></div>
       <img id="modalImg" src="" alt="Enlarged Variant Preview" onload="handleModalImgSuccess()" onerror="handleModalImgError()">
       <div id="modalFallback" class="img-fallback"></div>
     </div>
@@ -674,12 +673,15 @@
         r._karat = getVal(['Karat', 'KARAT']);
         r._prolif = getVal(['Prolif', 'PROLIF']);
         r._wt = parseFloat(getVal(['WT', 'Weight', 'Gross Wt', 'Gross Weight'])) || 0;
-        
         r._val = parseFloat(getVal(['Final Price - Pre Tax Value', 'Val', 'Value'])) || 0;
         
         // Handle MC nulls as missing instead of zeroing them
         const rawMc = getVal(['Making Charge', 'Making Charges', 'MC']);
         r._mc = rawMc === '' ? null : parseFloat(rawMc);
+
+        // Pre-cache LOT and QTY for optimized rendering
+        r._lot = getVal(['LOT Number', 'Lotno', 'Lot No']) || '-';
+        r._qty = getVal(['Quantity', 'Actual Quantity', 'Qty']) || 1;
 
         const rawTag = getVal(['Special tag', 'Special Tag', 'Tag']);
         r._specialTag = rawTag;
@@ -877,17 +879,18 @@
       
       const dCode = (cur.design || '').trim().toUpperCase();
       img.dataset.retried = "0";
+      // Request lowercase first
       img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.jpg`;
 
-      // STRICT QUEUE MANAGEMENT: Cancel previous preload to free up the browser's network queue
+      // Cancel previous preload to free network queue
       if (window._imgPreloader) {
         window._imgPreloader.src = '';
       }
       
       if (filteredGroups[currentIdx + 1]) {
-        const nextD = (filteredGroups[currentIdx + 1].design || '').trim().toUpperCase();
+        const nextDesign = (filteredGroups[currentIdx + 1].design || '').trim().toUpperCase();
         window._imgPreloader = new Image();
-        window._imgPreloader.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${nextD}.jpg`;
+        window._imgPreloader.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${nextDesign}.jpg`;
       }
 
       document.getElementById('dispVariant').innerText = cur.variant;
@@ -927,39 +930,34 @@
     }
 
     function renderDetailedTray(cur) {
-      const tbody = document.getElementById('trayTbody'); tbody.innerHTML = '';
+      const tbody = document.getElementById('trayTbody'); 
+      tbody.innerHTML = '';
       document.getElementById('trayHeader').innerText = `Available Lots In-Store (${cur.rows.length} lots)`;
+      
       cur.rows.forEach(r => {
-        const getVal = (colNames) => {
-          for (const name of colNames) {
-            for (const key of Object.keys(r)) {
-              if (key.trim().toLowerCase() === name.toLowerCase()) return String(r[key] || '').trim();
-            }
-          }
-          return '';
-        };
-        const lotVal = getVal(['LOT Number', 'Lotno', 'Lot No']) || '-';
-        const qtyVal = getVal(['Quantity', 'Actual Quantity', 'Qty']) || 1;
-        const priceVal = r._val;
+        // Read directly from the cached properties created in processRawData
         const mcVal = r._mc !== null ? `${r._mc}%` : '-';
         
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td style="font-family:monospace; font-weight:700; color:var(--primary);">${lotVal}</td>
-                        <td>${qtyVal}</td>
+        tr.innerHTML = `<td style="font-family:monospace; font-weight:700; color:var(--primary);">${r._lot}</td>
+                        <td>${r._qty}</td>
                         <td><b style="color:var(--text);">${r._wt.toFixed(3)}</b></td>
                         <td style="color:var(--accent); font-weight:700;">${mcVal}</td>
                         <td>${r._size}</td>
-                        <td style="font-weight:700;">₹${Number(priceVal).toLocaleString('en-IN')}</td>`;
+                        <td style="font-weight:700;">₹${Number(r._val).toLocaleString('en-IN')}</td>`;
         tbody.appendChild(tr);
       });
     }
 
     function handleImageSuccess() { document.getElementById('imgLoader').style.display = 'none'; document.getElementById('itemImg').style.opacity = '1'; }
+    
     function handleImageError() {
       const img = document.getElementById('itemImg');
       const dCode = (filteredGroups[currentIdx]?.design || '').trim().toUpperCase();
       if (img.dataset.retried === "0") {
-        img.dataset.retried = "1"; img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.JPG`;
+        img.dataset.retried = "1"; 
+        // Fallback to uppercase
+        img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.JPG`;
         return;
       }
       document.getElementById('imgLoader').style.display = 'none'; img.style.display = 'none';
@@ -1005,10 +1003,13 @@
     }
 
     function handleModalImgSuccess() { document.getElementById('modalImgLoader').style.display = 'none'; document.getElementById('modalImg').style.opacity = '1'; }
+    
     function handleModalImgError() {
       const img = document.getElementById('modalImg'); const dCode = (filteredGroups[currentIdx]?.design || '').trim().toUpperCase();
       if (img.dataset.retried === "0") {
-        img.dataset.retried = "1"; img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.JPG`; return;
+        img.dataset.retried = "1"; 
+        img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.JPG`; 
+        return;
       }
       document.getElementById('modalImgLoader').style.display = 'none'; img.style.display = 'none';
       const fallback = document.getElementById('modalFallback'); fallback.style.display = 'flex';
@@ -1059,6 +1060,7 @@
         delete c._variant; delete c._design; delete c._cat; delete c._cluster; 
         delete c._ag; delete c._size; delete c._karat; delete c._prolif; 
         delete c._wt; delete c._val; delete c._mc; delete c._specialTag; delete c._specialTagFilter;
+        delete c._lot; delete c._qty;
         rows.push(c);
       }));
       const ws = XLSX.utils.json_to_sheet(rows); const wb = XLSX.utils.book_new();
