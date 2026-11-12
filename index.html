@@ -41,7 +41,9 @@
     }
     .auth-card h3 { color: var(--primary); margin: 0 0 8px 0; }
     .auth-card p { color: var(--text-muted); font-size: 0.85rem; margin: 0; }
+    
     .main-spinner { width: 45px; height: 45px; border: 4px solid var(--panel-bg); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 20px auto; }
+    .spinner { width: 40px; height: 40px; border: 4px solid #1e293b; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* Header & Panel */
@@ -96,7 +98,7 @@
     .main-card { width: 100%; max-width: 1250px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
     .card-top { display: flex; gap: 20px; align-items: flex-start; }
 
-    /* EXACT QUALITY Image Viewer (scale-down prevents upscaling pixelation) */
+    /* Image Viewer */
     .image-viewer { 
       width: 500px; height: 500px; min-width: 500px; background: #0f172a; 
       border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; 
@@ -104,7 +106,7 @@
     }
     .image-viewer img { 
       width: 100%; height: 100%; 
-      object-fit: scale-down; /* This is the fix. Renders at exact 100% size max */
+      object-fit: contain; /* Using contain to match South1 speed */
     }
     
     .zoom-hint {
@@ -181,7 +183,7 @@
     
     .lightbox-body img { 
       width: 100%; height: 100%; 
-      object-fit: scale-down; /* Exact native resolution up to max window bounds */
+      object-fit: contain; 
     }
     
     .lightbox-actions-bar { margin-top: 12px; width: 100%; max-width: 900px; display: flex; justify-content: space-between; align-items: center; background: rgba(11, 17, 33, 0.95); border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; backdrop-filter: blur(8px); }
@@ -441,7 +443,10 @@
       
       <div class="image-viewer" onclick="openLightbox()" title="Click to enlarge image">
         <div id="dispTag" class="special-tag-badge" style="display:none;"></div>
-        <div class="img-loader" id="imgLoader"><div class="spinner"></div></div>
+        <div class="img-loader" id="imgLoader">
+          <div class="spinner"></div>
+          <span style="margin-top:10px; font-weight:600;">Loading Image...</span>
+        </div>
         <img id="itemImg" src="" alt="Variant Preview" onload="handleImageSuccess()" onerror="handleImageError()">
         <div id="imgFallback" class="img-fallback">Image not found on catalog server</div>
         <div class="zoom-hint">🔍 Tap to Zoom</div>
@@ -516,7 +521,10 @@
 
     <div class="lightbox-body" id="lightboxBody">
       <div id="modalTag" class="special-tag-badge" style="display:none; font-size: 0.85rem; padding: 6px 14px; top: 16px; left: 16px;"></div>
-      <div class="img-loader" id="modalImgLoader"><div class="spinner"></div></div>
+      <div class="img-loader" id="modalImgLoader">
+        <div class="spinner"></div>
+        <span style="margin-top:10px; font-weight:600;">Loading Image...</span>
+      </div>
       <img id="modalImg" src="" alt="Enlarged Variant Preview" onload="handleModalImgSuccess()" onerror="handleModalImgError()">
       <div id="modalFallback" class="img-fallback"></div>
     </div>
@@ -675,11 +683,10 @@
         r._wt = parseFloat(getVal(['WT', 'Weight', 'Gross Wt', 'Gross Weight'])) || 0;
         r._val = parseFloat(getVal(['Final Price - Pre Tax Value', 'Val', 'Value'])) || 0;
         
-        // Handle MC nulls as missing instead of zeroing them
         const rawMc = getVal(['Making Charge', 'Making Charges', 'MC']);
         r._mc = rawMc === '' ? null : parseFloat(rawMc);
 
-        // Pre-cache LOT and QTY for optimized rendering
+        // Pre-cache heavy values so the UI doesn't freeze during rendering loops
         r._lot = getVal(['LOT Number', 'Lotno', 'Lot No']) || '-';
         r._qty = getVal(['Quantity', 'Actual Quantity', 'Qty']) || 1;
 
@@ -879,17 +886,24 @@
       
       const dCode = (cur.design || '').trim().toUpperCase();
       img.dataset.retried = "0";
-      // Request lowercase first
       img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.jpg`;
 
-      // Cancel previous preload to free network queue
+      // Smart Sequential Preloader
       if (window._imgPreloader) {
+        window._imgPreloader.onerror = null;
         window._imgPreloader.src = '';
       }
       
       if (filteredGroups[currentIdx + 1]) {
         const nextDesign = (filteredGroups[currentIdx + 1].design || '').trim().toUpperCase();
         window._imgPreloader = new Image();
+        window._imgPreloader.onerror = function() {
+          // If lowercase 404s, seamlessly pre-cache the uppercase one silently
+          if (!this.retried) {
+            this.retried = true;
+            this.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${nextDesign}.JPG`;
+          }
+        };
         window._imgPreloader.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${nextDesign}.jpg`;
       }
 
@@ -935,7 +949,7 @@
       document.getElementById('trayHeader').innerText = `Available Lots In-Store (${cur.rows.length} lots)`;
       
       cur.rows.forEach(r => {
-        // Read directly from the cached properties created in processRawData
+        // Read directly from cached values instead of doing a heavy text loop for every cell
         const mcVal = r._mc !== null ? `${r._mc}%` : '-';
         
         const tr = document.createElement('tr');
@@ -956,7 +970,6 @@
       const dCode = (filteredGroups[currentIdx]?.design || '').trim().toUpperCase();
       if (img.dataset.retried === "0") {
         img.dataset.retried = "1"; 
-        // Fallback to uppercase
         img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.JPG`;
         return;
       }
