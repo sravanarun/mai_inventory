@@ -874,12 +874,17 @@
       document.getElementById('imgFallback').style.display = 'none';
       document.getElementById('imgLoader').style.display = 'flex';
       img.dataset.retried = "0";
-      img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${(cur.design || '').trim().toUpperCase()}.jpg`;
+      img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${(cur.design || '').trim().toUpperCase()}.JPG`;
 
-      if (window._imgPreloader) window._imgPreloader.src = '';
       if (filteredGroups[currentIdx + 1]) {
-        window._imgPreloader = new Image();
-        window._imgPreloader.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${(filteredGroups[currentIdx + 1].design || '').trim().toUpperCase()}.jpg`;
+        const nextDesign = (filteredGroups[currentIdx + 1].design || '').trim().toUpperCase();
+        const baseImgUrl = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${nextDesign}`;
+        
+        const preloadUpper = new Image();
+        preloadUpper.src = `${baseImgUrl}.JPG`;
+        
+        const preloadLower = new Image();
+        preloadLower.src = `${baseImgUrl}.jpg`;
       }
 
       document.getElementById('dispVariant').innerText = cur.variant;
@@ -951,7 +956,7 @@
       const img = document.getElementById('itemImg');
       const dCode = (filteredGroups[currentIdx]?.design || '').trim().toUpperCase();
       if (img.dataset.retried === "0") {
-        img.dataset.retried = "1"; img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.JPG`;
+        img.dataset.retried = "1"; img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.jpg`;
         return;
       }
       document.getElementById('imgLoader').style.display = 'none'; img.style.display = 'none';
@@ -985,7 +990,7 @@
       const modalImg = document.getElementById('modalImg');
       modalImg.style.opacity = '0'; modalImg.style.display = 'block';
       document.getElementById('modalFallback').style.display = 'none'; document.getElementById('modalImgLoader').style.display = 'flex';
-      modalImg.dataset.retried = "0"; modalImg.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.jpg`;
+      modalImg.dataset.retried = "0"; modalImg.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.JPG`;
 
       const isConf = selectedVariantsMap.has(curGroup.variant);
       document.getElementById('modalConfirmBtn').innerText = isConf ? "✖ Remove Selection" : "✔ Confirm Selection";
@@ -998,7 +1003,7 @@
     function handleModalImgError() {
       const img = document.getElementById('modalImg'); const dCode = (filteredGroups[currentIdx]?.design || '').trim().toUpperCase();
       if (img.dataset.retried === "0") {
-        img.dataset.retried = "1"; img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.JPG`; return;
+        img.dataset.retried = "1"; img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.jpg`; return;
       }
       document.getElementById('modalImgLoader').style.display = 'none'; img.style.display = 'none';
       const fallback = document.getElementById('modalFallback'); fallback.style.display = 'flex';
