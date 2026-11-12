@@ -447,6 +447,7 @@
           <div class="spinner"></div>
           <span style="margin-top:10px; font-weight:600;">Loading Image...</span>
         </div>
+        <!-- Main Image -->
         <img id="itemImg" src="" alt="Variant Preview" onload="handleImageSuccess()" onerror="handleImageError()">
         <div id="imgFallback" class="img-fallback">Image not found on catalog server</div>
         <div class="zoom-hint">🔍 Tap to Zoom</div>
@@ -508,6 +509,7 @@
     <button class="btn-nav" id="nextBtn" onclick="navigateVariant(1)">Next →</button>
   </div>
 
+  <!-- Lightbox Modal -->
   <div class="lightbox-modal" id="lightboxModal" onclick="handleLightboxBackdropClick(event)">
     <div class="lightbox-header">
       <div class="lightbox-meta">
@@ -525,7 +527,8 @@
         <div class="spinner"></div>
         <span style="margin-top:10px; font-weight:600;">Loading Image...</span>
       </div>
-      <img id="modalImg" src="" alt="Enlarged Variant Preview" onload="handleModalImgSuccess()" onerror="handleModalImgError()">
+      <!-- Modal Image NO LONGER fetch its own URL -->
+      <img id="modalImg" src="" alt="Enlarged Variant Preview">
       <div id="modalFallback" class="img-fallback"></div>
     </div>
 
@@ -599,7 +602,9 @@
     let selectedVariantsMap = new Map();
     let currentIdx = 0;
     let isLightboxOpen = false;
-    let activePreloads = []; // Holds the sliding window image elements
+
+    // Single global preloader to avoid network queue freezing
+    window._imgPreloader = new Image();
 
     const filterFields = {
       tag: { col: '_specialTagFilter', selected: new Set(), name: 'Tags' },
@@ -687,7 +692,6 @@
         const rawMc = getVal(['Making Charge', 'Making Charges', 'MC']);
         r._mc = rawMc === '' ? null : parseFloat(rawMc);
 
-        // Pre-cache heavy values so the UI doesn't freeze during rendering loops
         r._lot = getVal(['LOT Number', 'Lotno', 'Lot No']) || '-';
         r._qty = getVal(['Quantity', 'Actual Quantity', 'Qty']) || 1;
 
@@ -859,33 +863,6 @@
       updateUI(rows.length);
     }
 
-    function preloadNextImages(currentIndex, count = 3) {
-      // Abort existing preloads to free up network queue
-      activePreloads.forEach(img => {
-        img.onload = null;
-        img.onerror = null;
-        img.src = '';
-      });
-      activePreloads = [];
-
-      for (let i = 1; i <= count; i++) {
-        if (currentIndex + i < filteredGroups.length) {
-          const dCode = (filteredGroups[currentIndex + i].design || '').trim().toUpperCase();
-          const img = new Image();
-          
-          img.onerror = function() {
-            if (!this.retried) {
-              this.retried = true;
-              this.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.JPG`;
-            }
-          };
-          
-          img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.jpg`;
-          activePreloads.push(img);
-        }
-      }
-    }
-
     function updateUI(totalMatchedRows) {
       document.getElementById('statVariantCount').innerText = filteredGroups.length;
       document.getElementById('statMaxIdx').innerText = filteredGroups.length;
@@ -907,17 +884,39 @@
         tagDisp.style.display = 'none';
       }
 
+      /* 1. RESET MAIN IMAGE VIEWER */
       const img = document.getElementById('itemImg');
-      img.style.opacity = '0'; img.style.display = 'block';
+      img.style.opacity = '0';
       document.getElementById('imgFallback').style.display = 'none';
       document.getElementById('imgLoader').style.display = 'flex';
       
+      /* 2. RESET MODAL (IF OPEN) SO IT SHOWS LOADING */
+      if (isLightboxOpen) {
+         document.getElementById('modalImg').style.opacity = '0';
+         document.getElementById('modalFallback').style.display = 'none';
+         document.getElementById('modalImgLoader').style.display = 'flex';
+         syncLightboxMetadata(); // Update texts instantly
+      }
+      
+      // Load new image
       const dCode = (cur.design || '').trim().toUpperCase();
       img.dataset.retried = "0";
       img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.jpg`;
 
-      // Trigger sliding window preloader
-      preloadNextImages(currentIdx, 3);
+      // Smart Background Preloader (ONLY loads the exact next item to prevent freezing)
+      window._imgPreloader.onerror = null;
+      window._imgPreloader.src = '';
+      if (filteredGroups[currentIdx + 1]) {
+        const nextDesign = (filteredGroups[currentIdx + 1].design || '').trim().toUpperCase();
+        window._imgPreloader.onerror = function() {
+          if (!this.retried) {
+            this.retried = true;
+            this.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${nextDesign}.JPG`;
+          }
+        };
+        window._imgPreloader.retried = false;
+        window._imgPreloader.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${nextDesign}.jpg`;
+      }
 
       document.getElementById('dispVariant').innerText = cur.variant;
       document.getElementById('dispAG').innerText = firstRow._ag || 'N/A';
@@ -951,8 +950,6 @@
       renderDetailedTray(cur);
       document.getElementById('prevBtn').disabled = currentIdx === 0;
       document.getElementById('nextBtn').disabled = currentIdx === filteredGroups.length - 1;
-
-      if (isLightboxOpen) syncLightboxContent();
     }
 
     function renderDetailedTray(cur) {
@@ -961,9 +958,7 @@
       document.getElementById('trayHeader').innerText = `Available Lots In-Store (${cur.rows.length} lots)`;
       
       cur.rows.forEach(r => {
-        // Read directly from cached values instead of heavy loops
         const mcVal = r._mc !== null ? `${r._mc}%` : '-';
-        
         const tr = document.createElement('tr');
         tr.innerHTML = `<td style="font-family:monospace; font-weight:700; color:var(--primary);">${r._lot}</td>
                         <td>${r._qty}</td>
@@ -975,7 +970,22 @@
       });
     }
 
-    function handleImageSuccess() { document.getElementById('imgLoader').style.display = 'none'; document.getElementById('itemImg').style.opacity = '1'; }
+    function handleImageSuccess() { 
+      const mainImg = document.getElementById('itemImg');
+      document.getElementById('imgLoader').style.display = 'none'; 
+      mainImg.style.opacity = '1'; 
+      
+      // Force modal to steal the exact successful image URL to prevent network load
+      if (isLightboxOpen) {
+         const modalImg = document.getElementById('modalImg');
+         if (modalImg.src !== mainImg.src) {
+             modalImg.src = mainImg.src;
+         }
+         document.getElementById('modalImgLoader').style.display = 'none';
+         modalImg.style.display = 'block';
+         modalImg.style.opacity = '1';
+      }
+    }
     
     function handleImageError() {
       const img = document.getElementById('itemImg');
@@ -985,24 +995,70 @@
         img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.JPG`;
         return;
       }
-      document.getElementById('imgLoader').style.display = 'none'; img.style.display = 'none';
-      const fallback = document.getElementById('imgFallback'); fallback.style.display = 'flex';
+      
+      document.getElementById('imgLoader').style.display = 'none'; 
+      img.style.display = 'none';
+      const fallback = document.getElementById('imgFallback'); 
+      fallback.style.display = 'flex';
       fallback.style.flexDirection = 'column'; fallback.style.alignItems = 'center'; fallback.style.justifyContent = 'center';
       fallback.innerHTML = `<div style="font-size: 2.2rem; margin-bottom: 6px;">🖼️</div><div style="font-weight: 700; color: #64748b;">No Catalog Image Found</div><div style="font-size: 0.72rem; color: #94a3b8; margin-top: 4px;">Design: ${dCode || 'N/A'}</div>`;
+      
+      if (isLightboxOpen) {
+          document.getElementById('modalImgLoader').style.display = 'none';
+          document.getElementById('modalImg').style.display = 'none';
+          const mFallback = document.getElementById('modalFallback');
+          mFallback.style.display = 'flex';
+          mFallback.style.flexDirection = 'column'; mFallback.style.alignItems = 'center'; mFallback.style.justifyContent = 'center';
+          mFallback.innerHTML = fallback.innerHTML;
+      }
     }
 
-    function openLightbox() { if (filteredGroups.length === 0) return; isLightboxOpen = true; document.getElementById('lightboxModal').classList.add('active'); syncLightboxContent(); }
+    function openLightbox() { 
+      if (filteredGroups.length === 0) return; 
+      isLightboxOpen = true; 
+      document.getElementById('lightboxModal').classList.add('active'); 
+      syncLightboxMetadata(); 
+      
+      // Determine what state the main image is currently in
+      const mainImg = document.getElementById('itemImg');
+      const modalImg = document.getElementById('modalImg');
+      
+      if (mainImg.style.opacity === '1') {
+          // Already finished loading, copy instantly
+          modalImg.src = mainImg.src;
+          document.getElementById('modalImgLoader').style.display = 'none';
+          modalImg.style.display = 'block';
+          modalImg.style.opacity = '1';
+          document.getElementById('modalFallback').style.display = 'none';
+      } else if (document.getElementById('imgFallback').style.display === 'flex') {
+          // Already failed
+          document.getElementById('modalImgLoader').style.display = 'none';
+          modalImg.style.display = 'none';
+          const mFallback = document.getElementById('modalFallback');
+          mFallback.style.display = 'flex';
+          mFallback.style.flexDirection = 'column'; mFallback.style.alignItems = 'center'; mFallback.style.justifyContent = 'center';
+          mFallback.innerHTML = document.getElementById('imgFallback').innerHTML;
+      } else {
+          // Still loading in the background, show spinner until handleImageSuccess fires
+          document.getElementById('modalImgLoader').style.display = 'flex';
+          modalImg.style.opacity = '0';
+          modalImg.style.display = 'block';
+          document.getElementById('modalFallback').style.display = 'none';
+      }
+    }
+
     function closeLightbox() { isLightboxOpen = false; document.getElementById('lightboxModal').classList.remove('active'); }
     function handleLightboxBackdropClick(e) { if (e.target.id === 'lightboxModal') closeLightbox(); }
 
-    function syncLightboxContent() {
-      if (!isLightboxOpen || filteredGroups.length === 0) return;
+    function syncLightboxMetadata() {
+      // ONLY set text details. Never touch network requests here!
       const curGroup = filteredGroups[currentIdx];
-      const dCode = (curGroup.design || '').trim().toUpperCase();
       const firstRow = curGroup.rows[0];
+      const dCode = (curGroup.design || '').trim().toUpperCase();
 
       document.getElementById('modalDesignBadge').innerText = dCode;
       document.getElementById('modalMetaTag').innerText = `${firstRow._cat} • ${firstRow._karat}K`;
+      
       const weights = curGroup.rows.map(r => r._wt);
       document.getElementById('modalWtTag').innerText = (Math.min(...weights) === Math.max(...weights)) ? `WT: ${Math.min(...weights).toFixed(3)} g` : `WT: ${Math.min(...weights).toFixed(3)} - ${Math.max(...weights).toFixed(3)} g`;
       document.getElementById('modalIdxTag').innerText = `${currentIdx + 1} of ${filteredGroups.length}`;
@@ -1011,35 +1067,17 @@
       if (firstRow._specialTag) {
         modalTag.innerText = firstRow._specialTag;
         modalTag.style.display = 'block';
-      } else { modalTag.style.display = 'none'; }
-
-      const modalImg = document.getElementById('modalImg');
-      modalImg.style.opacity = '0'; modalImg.style.display = 'block';
-      document.getElementById('modalFallback').style.display = 'none'; document.getElementById('modalImgLoader').style.display = 'flex';
-      
-      modalImg.dataset.retried = "0"; 
-      modalImg.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.jpg`;
+      } else { 
+        modalTag.style.display = 'none'; 
+      }
 
       const isConf = selectedVariantsMap.has(curGroup.variant);
-      document.getElementById('modalConfirmBtn').innerText = isConf ? "✖ Remove Selection" : "✔ Confirm Selection";
-      document.getElementById('modalConfirmBtn').className = isConf ? "btn-action btn-confirmed" : "btn-action btn-confirm";
+      const confBtn = document.getElementById('modalConfirmBtn');
+      confBtn.innerText = isConf ? "✖ Remove Selection" : "✔ Confirm Selection";
+      confBtn.className = isConf ? "btn-action btn-confirmed" : "btn-action btn-confirm";
+      
       document.getElementById('modalPrevBtn').disabled = (currentIdx === 0);
       document.getElementById('modalNextBtn').disabled = (currentIdx === filteredGroups.length - 1);
-    }
-
-    function handleModalImgSuccess() { document.getElementById('modalImgLoader').style.display = 'none'; document.getElementById('modalImg').style.opacity = '1'; }
-    
-    function handleModalImgError() {
-      const img = document.getElementById('modalImg'); const dCode = (filteredGroups[currentIdx]?.design || '').trim().toUpperCase();
-      if (img.dataset.retried === "0") {
-        img.dataset.retried = "1"; 
-        img.src = `https://jewbridge.titanjew.in/CatalogImages/api/ImageFetch/?Type=ProductImages&ImageName=${dCode}.JPG`; 
-        return;
-      }
-      document.getElementById('modalImgLoader').style.display = 'none'; img.style.display = 'none';
-      const fallback = document.getElementById('modalFallback'); fallback.style.display = 'flex';
-      fallback.style.flexDirection = 'column'; fallback.style.alignItems = 'center'; fallback.style.justifyContent = 'center';
-      fallback.innerHTML = `<div style="font-size: 3rem; margin-bottom: 6px;">🖼️</div><div style="font-weight: 700; color: #64748b;">No Catalog Image Found</div><div style="font-size: 0.8rem; color: #94a3b8; margin-top: 4px;">Design: ${dCode || 'N/A'}</div>`;
     }
 
     let touchStartX = 0; let touchEndX = 0;
